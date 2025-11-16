@@ -425,14 +425,6 @@ function handleDialogShow(): void {
     activeSection.value = 'connect';
 }
 
-function saveSubflows(): void {
-    console.log('Subflows speichern');
-}
-
-function resetSubflows(): void {
-    console.log('Subflows zurücksetzen');
-}
-
 // ----------------- Event-Handler für GroupMemberEditor -----------------
 
 // Connect (GroupMember-Modus)
