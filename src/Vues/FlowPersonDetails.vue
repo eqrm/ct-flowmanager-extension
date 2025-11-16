@@ -1,11 +1,10 @@
 <template>
     <Dialog
-        :visible="visible"
+        v-model:visible="visible"
         modal
         :draggable="false"
         dismissableMask
         :style="{ width: '800px', maxWidth: '95vw' }"
-        @update:visible="updateDialogVisibility"
         @show="handleDialogShow"
     >
         <!-- Dialog Header mit Avatar und Name -->
@@ -89,7 +88,7 @@
             </Fieldset>
             <Fieldset legend="Nächster Schritt">
                 <DataTable
-                    :value="props.data.subFlows"
+                    :value="filterGroupMembersBySubFlowParent(props.data.subFlows, equipSubFlowParent!)"
                     size="large"
                     responsiveLayout="scroll"
                     :pt="{ table: { style: 'min-width: 30rem' } }">
@@ -126,26 +125,10 @@
             </Fieldset>
         </div>
 
-        <!-- Sub-Flows -->
+        <!-- Groups -->
         <div v-show="activeSection === 'groups'">
-            <Fieldset legend="Nächster Schritt (Subflows)">
-                <DataTable
-                    :value="data.subFlows"
-                    size="large"
-                    responsiveLayout="scroll"
-                    :pt="{ table: { style: 'min-width: 30rem' } }"
-                >
-                    <Column header="Subflow">
-                        <template #body="{ data: row }">
-                            {{ row?.group?.title ?? '–' }}
-                        </template>
-                    </Column>
-                </DataTable>
-                <!-- Subflows Buttons -->
-                <div class="flex gap-2 mt-3">
-                    <Button label="Speichern" icon="pi pi-check" @click="saveSubflows" />
-                    <Button label="Verwerfen" icon="pi pi-times" severity="danger" variant="outlined" @click="resetSubflows" />
-                </div>
+            <Fieldset legend="Group-Zugehörigkeit">
+                <p>Group-Informationen werden hier angezeigt...</p>
             </Fieldset>
         </div>
 
@@ -174,8 +157,8 @@ import { computed, ref, inject } from 'vue';
 // PrimeVue Components
 import Avatar from 'primevue/avatar';
 import Button from 'primevue/button';
-import Column from 'primevue/column';        // <-- Fehlender Import
-import DataTable from 'primevue/datatable';  // <-- Fehlender Import
+import Column from 'primevue/column';        
+import DataTable from 'primevue/datatable';  
 import Dialog from 'primevue/dialog';
 import Fieldset from 'primevue/fieldset';
 import MenuBar from 'primevue/menubar';
@@ -187,7 +170,7 @@ import GroupMemberEditor from './GroupMemberEditor.vue';
 import GroupEditor from './GroupEditor.vue';
 
 // Types and Utils
-import { EQUIP_INITIALS, FLOW_CONFIG, type TableDataSet } from '../types/flow';
+import { EQUIP_INITIALS, FLOW_CONFIG, type TableDataSet, type SubFlowStep } from '../types/flow';
 import type { Person, Group, GroupMember } from '../utils/ct-types';
 import type { MenuItem } from 'primevue/menuitem';
 
@@ -212,6 +195,7 @@ const emit = defineEmits<{
 const allEquipSteps = inject<Array<Group>>('allEquipSteps', []);
 const allMasterFlowSteps = inject<Array<Group>>('allMasterFlowSteps', []);
 const allConnectGroupLeaders = inject<Array<GroupMember>>('allConnectGroupLeaders', []);
+const allSubFlows = inject<Array<SubFlowStep>>('allSubFlows', []);
 
 // =============================================================================
 // REACTIVE STATE
@@ -243,6 +227,10 @@ const ctPersonLink = computed(() =>
 
 const editableMasterFlows = computed(() => 
     allMasterFlowSteps.filter(step => !step.tags?.map(tag => tag.id).includes(FLOW_CONFIG.TAG_AUTOGROUP_ID))
+);
+
+const equipSubFlowParent = computed(() => 
+    allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_EQUIP)
 );
 
 // =============================================================================
@@ -308,9 +296,23 @@ const menuItems = ref<MenuItem[]>([
 // UTILITY FUNCTIONS
 // =============================================================================
 
-function updateDialogVisibility(value: boolean): void {
-    emit('update:visible', value);
+
+/**
+ * Filtert GroupMembers nach Zugehörigkeit zu einem SubFlow-Parent.
+ * 
+ * Prüft, ob die Gruppen-ID eines GroupMembers in der childrenIds-Liste
+ * des übergebenen SubFlow-Parents enthalten ist. Dadurch werden nur
+ * Mitgliedschaften in Untergruppen (Children) des SubFlows zurückgegeben.
+ * 
+ * @param members - Array aller zu filternden GroupMember-Objekte
+ * @param subFlow - SubFlowStep-Objekt, das die childrenIds-Liste enthält
+ * @returns Gefiltertes Array mit GroupMembers, deren Gruppen Kinder des SubFlows sind
+ */
+function filterGroupMembersBySubFlowParent(members: Array<GroupMember>, subFlow: SubFlowStep): Array<GroupMember> {
+    return members.filter(member => 
+        subFlow.childrenIds?.includes(Number(member.group.domainIdentifier)));
 }
+
 
 /**
  * Generische Funktion zur Erstellung von Vollnamen

@@ -10,6 +10,11 @@ export type TableDataSet = {
     equip: Array<GroupMember>;
 };
 
+export type SubFlowStep = Group & {
+    parentIds?: number[];
+    childrenIds?: number[];
+};
+
 // Flow Configuration Constants
 export const FLOW_CONFIG = {
     CONNECT_GROUPTYPE_ID: 16,
@@ -19,7 +24,8 @@ export const FLOW_CONFIG = {
     GROUP_TYPE_ID_FLOW: 8,
     GROUP_TYPE_ID_MERKMAL: 4,
     TAG_AUTOGROUP_ID: 41,
-    TAG_KOPFGRUPPE_ID: 74
+    TAG_KOPFGRUPPE_ID: 74,
+    FLOW_ID_EQUIP: 2752
 } as const;
 
 // Flow Group IDs (!0New - !6Friend)

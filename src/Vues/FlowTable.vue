@@ -129,7 +129,7 @@
                     class="p-button-text" 
                     as="a" 
                     target="_blank" 
-                    :href="`https://eqrm.church.tools/?q=churchdb#PersonView/searchEntry:${slotProps.data.person.person.domainIdentifier}`" 
+                    :href="getPersonUrl(slotProps.data.person.person.domainIdentifier)" 
                 />
             </template>
         </Column>
@@ -158,7 +158,7 @@
     import type { Group, GroupMember, MetaPagination } from '../utils/ct-types';
     import type { PageResponse } from '@churchtools/churchtools-client/dist/churchtoolsClient';
     import { churchtoolsClient } from '@churchtools/churchtools-client';
-    import type { TableDataSet } from '../types/flow';
+    import type { SubFlowStep, TableDataSet } from '../types/flow';
     import { FLOW_CONFIG, FLOW_GROUP_IDS, EQUIP_IDS, FLOW_INITIALS, EQUIP_INITIALS } from '../types/flow';
     import { FilterMatchMode } from '@primevue/core/api';
     import 'primeicons/primeicons.css';
@@ -219,7 +219,7 @@
     const totalRecords = ref(0);
     const loading = ref(false);
     const allMasterFlowSteps = inject<Array<Group>>('allMasterFlowSteps');
-    const allEquipSteps = inject<Array<Group>>('allEquipSteps');
+    const allEquipSteps = inject<Array<SubFlowStep>>('allEquipSteps');
 
     const personDialogVisible = ref(false);
     const selectedRow = ref<TableDataSet | null>(null);
@@ -334,6 +334,16 @@
         const parts = [firstName, lastName].filter(Boolean);
         
         return parts.join(' ') || 'Unbekannt';
+    };
+
+    /**
+     * Erstellt die ChurchTools Personen-URL für das PersonView-Modul.
+     * 
+     * @param personId - DomainIdentifier der Person
+     * @returns Vollständige URL zum PersonView-Modul mit searchEntry-Parameter
+     */
+    const getPersonUrl = (personId: string): string => {
+        return `https://eqrm.church.tools/?q=churchdb#PersonView/searchEntry:${personId}`;
     };
 
 </script>
