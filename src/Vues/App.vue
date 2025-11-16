@@ -1,0 +1,25 @@
+<template>
+    <div class="card">
+        <Tabs value="1">
+            <TabList>
+                <Tab value="1">Flow Manager</Tab>
+            </TabList>
+            <TabPanels>
+                <TabPanel value="1">
+                    <FlowTable :flow-id="671"/>
+                </TabPanel>
+            </TabPanels>
+        </Tabs>
+    </div>
+</template>
+
+
+<script setup lang="ts">
+    import 'primeflex/primeflex.css'
+    import Tabs from 'primevue/tabs';
+    import TabList from 'primevue/tablist';
+    import Tab from 'primevue/tab';
+    import TabPanels from 'primevue/tabpanels';
+    import TabPanel from 'primevue/tabpanel';
+    import FlowTable from './FlowTable.vue';
+</script>
