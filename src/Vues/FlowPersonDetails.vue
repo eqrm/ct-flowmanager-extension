@@ -121,7 +121,51 @@
         <!-- Team-Zugehörigkeit -->
         <div v-show="activeSection === 'team'">
             <Fieldset legend="Team-Zugehörigkeit">
-                <p>Team-Informationen werden hier angezeigt...</p>
+                <DataTable
+                    :value="data.teams"
+                    size="large"
+                    responsiveLayout="scroll"
+                    :pt="{ table: { style: 'min-width: 30rem' } }">
+                    <Column width="3rem;">
+                        <template #body="{ data: row }">
+                            <Avatar 
+                                :image="row.group.imageUrl || undefined"
+                                :icon="row.group.imageUrl ? undefined : 'pi pi-users'"
+                                size="small"
+                                shape="circle"
+                            />
+                        </template>
+                    </Column>
+                    <Column header="Team">
+                        <template #body="{ data: row }">
+                            {{ row?.group?.title ?? '–' }}
+                        </template>
+                    </Column>
+                    <Column header="Rolle">
+                        <template #body="{ data: row }">
+                            {{ getRoleString(row?.groupTypeRoleId)   }}
+                        </template>
+                    </Column>
+                    <Column header="Beigetreten am">
+                        <template #body="{ data: row }">
+                            {{ formatDate(row?.memberStartDate) }}
+                        </template>
+                    </Column>
+                    <Column style="width: 3rem;">
+                        <template #body="{ data: row }">
+                            <Button
+                                icon="pi pi-external-link"
+                                size="small"
+                                target="_blank"
+                                rounded
+                                outlined
+                                as="a"
+                                :href="`${row?.group?.frontendUrl}`"
+                                v-tooltip.left="`${row?.group?.title ?? '-'} im Gruppenmodul öffnen`"
+                            />
+                        </template>
+                    </Column>
+                </DataTable>
             </Fieldset>
         </div>
 
@@ -171,7 +215,7 @@ import GroupEditor from './GroupEditor.vue';
 
 // Types and Utils
 import { EQUIP_INITIALS, FLOW_CONFIG, type TableDataSet, type SubFlowStep } from '../types/flow';
-import type { Person, Group, GroupMember } from '../utils/ct-types';
+import type { Person, Group, GroupMember, PersonMasterData } from '../utils/ct-types';
 import type { MenuItem } from 'primevue/menuitem';
 
 // =============================================================================
@@ -196,6 +240,7 @@ const allEquipSteps = inject<Array<Group>>('allEquipSteps', []);
 const allMasterFlowSteps = inject<Array<Group>>('allMasterFlowSteps', []);
 const allConnectGroupLeaders = inject<Array<GroupMember>>('allConnectGroupLeaders', []);
 const allSubFlows = inject<Array<SubFlowStep>>('allSubFlows', []);
+const masterData = inject<PersonMasterData | null>('masterData', null);
 
 // =============================================================================
 // REACTIVE STATE
@@ -296,6 +341,22 @@ const menuItems = ref<MenuItem[]>([
 // UTILITY FUNCTIONS
 // =============================================================================
 
+
+/**
+ * Gibt den Namen einer Rolle anhand ihrer ID zurück.
+ * 
+ * Sucht in den Master-Daten nach der Rolle mit der übergebenen ID
+ * und gibt deren Namen zurück. Wird verwendet, um Rollen-IDs in
+ * lesbaren Text zu konvertieren (z.B. für Team-Zugehörigkeiten).
+ * 
+ * @param roleId - ID der Rolle (kann null/undefined sein)
+ * @returns Name der Rolle oder '–' wenn keine Rolle gefunden wurde
+ */
+function getRoleString(roleId: number | null | undefined): string {
+    if (!roleId || !masterData) return '–';
+    const role = masterData.roles?.find(r => r.id === roleId);
+    return role ? role.name : '–';    
+}
 
 /**
  * Filtert GroupMembers nach Zugehörigkeit zu einem SubFlow-Parent.

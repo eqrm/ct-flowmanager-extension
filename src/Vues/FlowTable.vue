@@ -295,6 +295,8 @@
                     });
                     const connectGroups = personGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.CONNECT_GROUPTYPE_ID);
                     const flowGroupJoins = flowGroups.map(g => g.memberStartDate ? new Date(g.memberStartDate) : null);
+                    const groups = personGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_GROUP);
+                    const teams = personGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_TEAM);
 
                     return {
                         person: groupMember,
@@ -305,6 +307,8 @@
                             connectGroups.map(g => Number(g.group.domainIdentifier))),
                         latestJoinDate: flowGroupJoins.at(-1),
                         equip: equipGroups,
+                        groups: groups,
+                        teams: teams,
                     };
                 })
             );

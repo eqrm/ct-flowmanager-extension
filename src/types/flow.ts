@@ -8,6 +8,8 @@ export type TableDataSet = {
     connectLeaders: Array<GroupMember>;
     latestJoinDate?: Date | null;
     equip: Array<GroupMember>;
+    teams: Array<GroupMember>;
+    groups: Array<GroupMember>;
 };
 
 export type SubFlowStep = Group & {
@@ -23,6 +25,8 @@ export const FLOW_CONFIG = {
     FLOW_MEMBERS_ROLE_ID: 49,
     GROUP_TYPE_ID_FLOW: 8,
     GROUP_TYPE_ID_MERKMAL: 4,
+    GROUP_TYPE_ID_GROUP: 1,
+    GROUP_TYPE_ID_TEAM: 2,
     TAG_AUTOGROUP_ID: 41,
     TAG_KOPFGRUPPE_ID: 74,
     FLOW_ID_EQUIP: 2752

@@ -128,11 +128,7 @@ try {
             preset: Aura
         }
     });
-    app.provide('contactLabels', masterdata.value?.contactLabels);
-    app.provide('groupCategories', masterdata.value?.groupCategories);
-    app.provide('groupTypes', masterdata.value?.groupTypes);
-    app.provide('campuses', masterdata.value?.campuses);
-    app.provide('groupStatuses', masterdata.value?.groupStatuses);
+    app.provide('masterData', masterdata.value);
     app.provide('allMasterFlowSteps', allMasterFlowSteps.value);
     app.provide('allSubFlowSteps', allSubFlowSteps.value);
     app.provide('allSubFlows', allSubFlows.value);
