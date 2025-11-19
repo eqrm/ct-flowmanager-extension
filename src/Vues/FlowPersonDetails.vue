@@ -54,7 +54,7 @@
         <div v-show="activeSection === 'tags'">
             <GroupEditor
                 :current-members="data.flow"
-                :candidate-members="editableMasterFlows"
+                :candidate-members="allMasterFlowSteps"
                 :target-person="data.person"
                 :role-id="FLOW_CONFIG.FLOW_MEMBERS_ROLE_ID"
                 current-members-title="Aktuelle Tags"
@@ -120,6 +120,40 @@
         
         <!-- Team-Zugehörigkeit -->
         <div v-show="activeSection === 'team'">
+            <Fieldset legend="Nächster Schritt">
+                <div class="flex justify-content-between align-items-start gap-3 mt-2">
+                    <DataTable
+                        :value="filterGroupMembersBySubFlowParent(props.data.subFlows, teamsSubFlowParent!)"
+                        size="large"
+                        responsiveLayout="scroll"
+                        :pt="{ table: { style: 'min-width: 30rem' } }">
+                        <Column header="Step">
+                            <template #body="{ data: row }">
+                                {{ row?.group?.title ?? '–' }}
+                            </template>
+                        </Column>
+                        <Column header="Gestartet am">
+                            <template #body="{ data: row }">
+                                {{ formatDate(row?.memberStartDate) }}
+                            </template>
+                        </Column>
+                        <Column>
+                            <template #body="{data: row}">
+                                {{ formatTimeSince(row?.memberStartDate) }}
+                            </template>
+                        </Column>
+                    </DataTable>
+                    <Button 
+                        icon="pi pi-pencil" 
+                        :href="'https://app.eqrm.de/flows/start-flow?flow=teams'" 
+                        as="a"
+                        target="_blank"
+                        rounded
+                        outlined
+                        v-tooltip.bottom="'Teams Flow in neuem Tab öffnen'"
+                    </Button>
+                </div>
+            </Fieldset>            
             <Fieldset legend="Team-Zugehörigkeit">
                 <DataTable
                     :value="data.teams"
@@ -270,12 +304,12 @@ const ctPersonLink = computed(() =>
     props.data?.person?.person?.frontendUrl || '#'
 );
 
-const editableMasterFlows = computed(() => 
-    allMasterFlowSteps.filter(step => !step.tags?.map(tag => tag.id).includes(FLOW_CONFIG.TAG_AUTOGROUP_ID))
-);
-
 const equipSubFlowParent = computed(() => 
     allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_EQUIP)
+);
+
+const teamsSubFlowParent = computed(() => 
+    allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_TEAMS)
 );
 
 // =============================================================================

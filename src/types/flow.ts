@@ -29,7 +29,8 @@ export const FLOW_CONFIG = {
     GROUP_TYPE_ID_TEAM: 2,
     TAG_AUTOGROUP_ID: 41,
     TAG_KOPFGRUPPE_ID: 74,
-    FLOW_ID_EQUIP: 2752
+    FLOW_ID_EQUIP: 2752,
+    FLOW_ID_TEAMS: 2755,
 } as const;
 
 // Flow Group IDs (!0New - !6Friend)

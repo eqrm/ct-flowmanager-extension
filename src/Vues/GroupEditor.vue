@@ -35,6 +35,7 @@
                             icon="pi pi-times"
                             size="small"
                             severity="danger"
+                            :disabled="isDeletable(row)"
                             rounded
                             outlined
                             @click="onRemove(row)"
@@ -110,6 +111,7 @@ import Select from 'primevue/select';
 // Types — Person entfernt, nur GroupMember bleibt
 import type { GroupMember, MembershipNew, Group } from '../utils/ct-types';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
+import { FLOW_CONFIG } from '../types/flow';
 
 // --------------------------- Props ---------------------------
 // Vereinfachte API: nur GroupMember bearbeiten.
@@ -131,17 +133,30 @@ const emit = defineEmits<{
     (e: 'member-removed', member: GroupMember): void;
 }>();
 
+
+
 // --------------------------- Internal State ---------------------------
 const selectedCandidate = ref<Group | null>(null);
 
 // --------------------------- Computed: Select-Options ---------------------------
 const candidateOptions = computed(() =>
     (props.candidateMembers || [])
+    .filter(step => !step.tags?.map(tag => tag.id).includes(FLOW_CONFIG.TAG_AUTOGROUP_ID))
     .filter(cm => !props.currentMembers.some(m => m.group.domainIdentifier === cm.id.toString()))
     .map(cm => ({ ...cm, displayName: cm.name || 'NN'}))
 );
 
+
 // --------------------------- Helfer & API ---------------------------
+
+
+function isDeletable(groupMember: GroupMember): boolean {
+    const deletable = props.candidateMembers
+        .find(cm => cm.id.toString() === groupMember.group.domainIdentifier)
+        ?.tags?.some(tag => tag.id === FLOW_CONFIG.TAG_AUTOGROUP_ID);
+    console.log('isDeletable check for group:', groupMember.group.title, deletable, deletable ? 'true' : 'false');
+    return deletable ? true : false;
+}
 
 /**
  * Erzeugt Anzeige-Namen für GroupMember in einer robusten, typsicheren Weise.
