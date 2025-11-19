@@ -35,11 +35,11 @@
                             icon="pi pi-times"
                             size="small"
                             severity="danger"
-                            :disabled="isDeletable(row)"
+                            :disabled="isNotDeletable(row)"
                             rounded
                             outlined
                             @click="onRemove(row)"
-                            v-tooltip.left="`${fullName(row)} entfernen`"
+                            v-tooltip.left="isNotDeletable(row) ? 'Diese Gruppe kann nicht entfernt werden.' : `${row.group.title} entfernen`"
                         />
                     </template>
                 </Column>
@@ -150,7 +150,7 @@ const candidateOptions = computed(() =>
 // --------------------------- Helfer & API ---------------------------
 
 
-function isDeletable(groupMember: GroupMember): boolean {
+function isNotDeletable(groupMember: GroupMember): boolean {
     const deletable = props.candidateMembers
         .find(cm => cm.id.toString() === groupMember.group.domainIdentifier)
         ?.tags?.some(tag => tag.id === FLOW_CONFIG.TAG_AUTOGROUP_ID);
