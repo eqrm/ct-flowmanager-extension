@@ -113,10 +113,11 @@
         <!-- letzte Änderung -->
         <Column 
             field="joined" 
-            header="Flow geändert" 
-            dataType="date">
+            header="Mitglied seit" 
+            dataType="date"
+            :sortable="true">
             <template #body="{ data }">
-                {{ data.latestJoinDate ? data.latestJoinDate.toLocaleDateString('de-DE') : '' }}
+                {{ data.person.memberStartDate ? new Date(data.person.memberStartDate).toLocaleDateString() : '–' }}
             </template>
         </Column>
         
@@ -229,13 +230,14 @@
     };
 
     // Sort-Status der DataTable (Name/Vorname)
-    const serverSortField = ref<'name' | 'vorname'>('name');
+    const serverSortField = ref<'name' | 'vorname' | 'joined'>('name');
     const serverSortOrder = ref<1 | -1>(1);
 
     // Mappe die UI-Felder auf API-Felder
-    const orderFields: Record<'name' | 'vorname', string> = {
+    const orderFields: Record<'name' | 'vorname' | 'joined', string> = {
         name: 'person_lastName',
         vorname: 'person_firstName',
+        joined: 'member_memberStartDate',
     };
 
     const orderDirections: Record<'1' | '-1', 'ASC' | 'DESC'> = {

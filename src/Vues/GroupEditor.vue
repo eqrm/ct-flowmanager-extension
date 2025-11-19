@@ -114,13 +114,10 @@ import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { FLOW_CONFIG } from '../types/flow';
 
 // --------------------------- Props ---------------------------
-// Vereinfachte API: nur GroupMember bearbeiten.
-// currentMembers: vorhandene Mitgliedschaften (GroupMember[])
-// candidateMembers: mögliche neue GroupMember-Einträge zum Hinzufügen (GroupMember[])
 const props = defineProps<{
     currentMembers: GroupMember[];
-    candidateMembers: Group[];          // Kandidaten zum Hinzufügen
-    targetPerson: GroupMember;                // jetzt ausschließlich GroupMember
+    candidateMembers: Group[];          
+    targetPerson: GroupMember;              
     roleId?: number;
     currentMembersTitle?: string;
     addMemberTitle?: string;
@@ -150,17 +147,32 @@ const candidateOptions = computed(() =>
 // --------------------------- Helfer & API ---------------------------
 
 
+/**
+ * Prüft, ob ein Gruppenmitglied nicht gelöscht werden kann.
+ * 
+ * Ein Gruppenmitglied kann nicht entfernt werden, wenn die zugehörige Gruppe
+ * mit dem Tag für Auto-Gruppen (FLOW_CONFIG.TAG_AUTOGROUP_ID) versehen ist.
+ * Dies verhindert das manuelle Entfernen von automatisch verwalteten Gruppenmitgliedschaften.
+ * 
+ * @param groupMember - Das zu prüfende Gruppenmitglied
+ * @returns `true`, wenn das Mitglied nicht gelöscht werden kann, sonst `false`
+ */
 function isNotDeletable(groupMember: GroupMember): boolean {
-    const deletable = props.candidateMembers
+    const nDeletable = props.candidateMembers
         .find(cm => cm.id.toString() === groupMember.group.domainIdentifier)
         ?.tags?.some(tag => tag.id === FLOW_CONFIG.TAG_AUTOGROUP_ID);
-    console.log('isDeletable check for group:', groupMember.group.title, deletable, deletable ? 'true' : 'false');
-    return deletable ? true : false;
+    return nDeletable ? true : false;
 }
 
 /**
- * Erzeugt Anzeige-Namen für GroupMember in einer robusten, typsicheren Weise.
- * Erwartet GroupMember-Objekte mit person und ggf. domainAttributes.
+ * Gibt den vollständigen Namen einer Person zurück.
+ * 
+ * Die Funktion extrahiert Vor- und Nachnamen aus verschiedenen Objektstrukturen:
+ * - Bei GroupMember-Objekten werden die Daten aus `entity.person.domainAttributes` oder direkt aus `entity.person` gelesen
+ * - Unterstützt sowohl `firstName`/`lastName` als auch verschachtelte `domainAttributes`
+ * 
+ * @param entity - Das Objekt, aus dem der Name extrahiert werden soll (typischerweise GroupMember)
+ * @returns Der vollständige Name als "Vorname Nachname", oder "NN" falls keine Namensangaben vorhanden sind
  */
 function fullName(entity: unknown): string {
     if (!entity) return 'NN';
