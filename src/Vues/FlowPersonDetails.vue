@@ -114,7 +114,14 @@
         <!-- Taufe -->
         <div v-show="activeSection === 'taufe'">
             <Fieldset legend="Taufe">
-                <p>Taufe-Informationen werden hier angezeigt...</p>
+                <div v-if="taufeLoading">Lade Taufe-Daten…</div>
+                <div v-else-if="taufeError" class="text-red-600">Fehler: {{ taufeError }}</div>
+                <div v-else-if="taufePerson">
+                    <div class="mb-1"><strong>Taufdatum:</strong> {{ taufePerson.dateOfBaptism ? new Date(taufePerson.dateOfBaptism).toLocaleDateString() : '–' }}</div>
+                    <div class="mb-1"><strong>Getauft von:</strong> {{ taufePerson.baptisedBy ?? '–' }}</div>
+                    <div class="mb-1"><strong>Taufort:</strong> {{ taufePerson.placeOfBaptism ?? '–' }}</div>
+                </div>
+                <div v-else>Keine Taufe-Informationen vorhanden.</div>
             </Fieldset>
         </div>
         
@@ -205,8 +212,86 @@
 
         <!-- Groups -->
         <div v-show="activeSection === 'groups'">
+            <Fieldset legend="Nächster Schritt">
+                <div class="flex justify-content-between align-items-start gap-3 mt-2">
+                    <DataTable
+                        :value="filterGroupMembersBySubFlowParent(props.data.subFlows, groupsSubFlowParent!)"
+                        size="large"
+                        responsiveLayout="scroll"
+                        :pt="{ table: { style: 'min-width: 30rem' } }">
+                        <Column header="Step">
+                            <template #body="{ data: row }">
+                                {{ row?.group?.title ?? '–' }}
+                            </template>
+                        </Column>
+                        <Column header="Gestartet am">
+                            <template #body="{ data: row }">
+                                {{ formatDate(row?.memberStartDate) }}
+                            </template>
+                        </Column>
+                        <Column>
+                            <template #body="{data: row}">
+                                {{ formatTimeSince(row?.memberStartDate) }}
+                            </template>
+                        </Column>
+                    </DataTable>
+                    <Button 
+                        icon="pi pi-pencil" 
+                        :href="'https://app.eqrm.de/flows/start-flow?flow=teams'" 
+                        as="a"
+                        target="_blank"
+                        rounded
+                        outlined
+                        v-tooltip.bottom="'Teams Flow in neuem Tab öffnen'"
+                    </Button>
+                </div>
+            </Fieldset>            
             <Fieldset legend="Group-Zugehörigkeit">
-                <p>Group-Informationen werden hier angezeigt...</p>
+                <DataTable
+                    :value="data.groups"
+                    size="large"
+                    responsiveLayout="scroll"
+                    :pt="{ table: { style: 'min-width: 30rem' } }">
+                    <Column width="3rem;">
+                        <template #body="{ data: row }">
+                            <Avatar 
+                                :image="row.group.imageUrl || undefined"
+                                :icon="row.group.imageUrl ? undefined : 'pi pi-users'"
+                                size="small"
+                                shape="circle"
+                            />
+                        </template>
+                    </Column>
+                    <Column header="Team">
+                        <template #body="{ data: row }">
+                            {{ row?.group?.title ?? '–' }}
+                        </template>
+                    </Column>
+                    <Column header="Rolle">
+                        <template #body="{ data: row }">
+                            {{ getRoleString(row?.groupTypeRoleId)   }}
+                        </template>
+                    </Column>
+                    <Column header="Beigetreten am">
+                        <template #body="{ data: row }">
+                            {{ formatDate(row?.memberStartDate) }}
+                        </template>
+                    </Column>
+                    <Column style="width: 3rem;">
+                        <template #body="{ data: row }">
+                            <Button
+                                icon="pi pi-external-link"
+                                size="small"
+                                target="_blank"
+                                rounded
+                                outlined
+                                as="a"
+                                :href="`${row?.group?.frontendUrl}`"
+                                v-tooltip.left="`${row?.group?.title ?? '-'} im Gruppenmodul öffnen`"
+                            />
+                        </template>
+                    </Column>
+                </DataTable>
             </Fieldset>
         </div>
 
@@ -230,7 +315,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, inject } from 'vue';
+import { computed, ref, inject, watch } from 'vue';
 
 // PrimeVue Components
 import Avatar from 'primevue/avatar';
@@ -251,6 +336,7 @@ import GroupEditor from './GroupEditor.vue';
 import { EQUIP_INITIALS, FLOW_CONFIG, type TableDataSet, type SubFlowStep } from '../types/flow';
 import type { Person, Group, GroupMember, PersonMasterData } from '../utils/ct-types';
 import type { MenuItem } from 'primevue/menuitem';
+import { churchtoolsClient } from '@churchtools/churchtools-client';
 
 // =============================================================================
 // PROPS & EMITS
@@ -283,6 +369,11 @@ const masterData = inject<PersonMasterData | null>('masterData', null);
 const activeSection = ref('connect');
 const timelineRef = ref<InstanceType<typeof PersonTimeline>>();
 
+// --- Taufe: nachgeladene Personendaten ---
+const taufePerson = ref<Person | null>(null);
+const taufeLoading = ref(false);
+const taufeError = ref<string | null>(null);
+
 // =============================================================================
 // COMPUTED PROPERTIES
 // =============================================================================
@@ -310,6 +401,10 @@ const equipSubFlowParent = computed(() =>
 
 const teamsSubFlowParent = computed(() => 
     allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_TEAMS)
+);
+
+const groupsSubFlowParent = computed(() => 
+    allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_GROUPS)
 );
 
 // =============================================================================
@@ -547,6 +642,37 @@ function onMasterFlowRemoved(member: GroupMember): void {
     );
 }
 
+/**
+ * Lädt Personendaten, wenn die Taufe-Sektion aktiviert wird.
+ * Nutzt fetch gegen /persons/{id} — Endpunkt ggf. anpassen.
+ */
+async function loadTaufePerson(): Promise<void> {
+    const id = personId.value;
+    if (!id) {
+        taufePerson.value = null;
+        return;
+    }
+    taufeLoading.value = true;
+    try {
+        taufePerson.value = await churchtoolsClient.get<Person>(`/persons/${id}`);
+    } catch (err: unknown) {
+        console.error('Fehler beim Laden der Taufe-Daten:', err);
+        taufePerson.value = null;
+    } finally {
+        taufeLoading.value = false;
+    }
+}
+
+// Watcher: beim Wechsel in 'taufe' nachladen
+watch(() => activeSection.value, (val) => {
+    if (val === 'taufe') {
+        loadTaufePerson();
+    } else {
+        // optional: Daten freigeben, wenn Sektion verlassen wird
+        // taufePerson.value = null;
+        // taufeError.value = null;
+    }
+});
 
 
 </script>

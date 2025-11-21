@@ -38,9 +38,14 @@
         <!-- Flow -->
         <Column 
             field="flow" 
-            header="Flow" 
             :showFilterMenu="true" 
             :showFilterMatchModes="false">
+            <template #header>
+                <div class ="flex flex-column mr-2">
+                    <strong>Flow</strong>
+                    <strong v-if="selectedFlowLabel">({{ selectedFlowLabel }})</strong>
+                </div>
+            </template>
             <template #body="slotProps">
                 <AvatarDataColumn
                     :data="slotProps.data"
@@ -254,6 +259,14 @@
     });
 
     const selectedFlowId = computed(() => filters.value.flow.value as number | null);
+
+    // --- Neu: human-readable Label für den aktuellen Flow-Filter ---
+    const selectedFlowLabel = computed(() => {
+        const id = selectedFlowId.value;
+        if (!id) return '–';
+        const item = allMasterFlowSteps?.find(step => Number(step.id) === Number(id));
+        return item?.name ?? String(id);
+    });
 
     const onServerSort = (event: any) => {
         serverSortField.value = event.sortField;
