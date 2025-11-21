@@ -237,12 +237,12 @@
                     </DataTable>
                     <Button 
                         icon="pi pi-pencil" 
-                        :href="'https://app.eqrm.de/flows/start-flow?flow=teams'" 
+                        :href="'https://app.eqrm.de/flows/start-flow?flow=groups'" 
                         as="a"
                         target="_blank"
                         rounded
                         outlined
-                        v-tooltip.bottom="'Teams Flow in neuem Tab öffnen'"
+                        v-tooltip.bottom="'Gruppen Flow in neuem Tab öffnen'"
                     </Button>
                 </div>
             </Fieldset>            
@@ -298,8 +298,39 @@
         <!-- Offboarding -->
         <div v-show="activeSection === 'offboarding'">
             <Fieldset legend="Offboarding">
-                <p>Offboarding-Optionen werden hier angezeigt...</p>
-            </Fieldset>
+                <div class="flex justify-content-between align-items-start gap-3 mt-2">
+                    <DataTable
+                        :value="filterGroupMembersBySubFlowParent(props.data.subFlows, offboardingSubFlowParent!)"
+                        size="large"
+                        responsiveLayout="scroll"
+                        :pt="{ table: { style: 'min-width: 30rem' } }">
+                        <Column header="Step">
+                            <template #body="{ data: row }">
+                                {{ row?.group?.title ?? '–' }}
+                            </template>
+                        </Column>
+                        <Column header="Gestartet am">
+                            <template #body="{ data: row }">
+                                {{ formatDate(row?.memberStartDate) }}
+                            </template>
+                        </Column>
+                        <Column>
+                            <template #body="{data: row}">
+                                {{ formatTimeSince(row?.memberStartDate) }}
+                            </template>
+                        </Column>
+                    </DataTable>
+                    <Button 
+                        icon="pi pi-pencil" 
+                        :href="'https://app.eqrm.de/flows/start-flow?flow=offboarding'" 
+                        as="a"
+                        target="_blank"
+                        rounded
+                        outlined
+                        v-tooltip.bottom="'Offboarding Flow in neuem Tab öffnen'"
+                    </Button>
+                </div>
+            </Fieldset>            
         </div>
 
         <!-- Timeline Section -->
@@ -405,6 +436,10 @@ const teamsSubFlowParent = computed(() =>
 
 const groupsSubFlowParent = computed(() => 
     allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_GROUPS)
+);
+
+const offboardingSubFlowParent = computed(() => 
+    allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_OFFBOARDING)
 );
 
 // =============================================================================
