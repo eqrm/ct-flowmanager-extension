@@ -35,6 +35,7 @@
                             icon="pi pi-times"
                             size="small"
                             severity="danger"
+                            :disabled="isNotDeletable(row)"
                             rounded
                             outlined
                             @click="onRemove(row)"
@@ -148,14 +149,39 @@ const emit = defineEmits<{
 // --------------------------- Internal State ---------------------------
 const selectedCandidate = ref<GroupMember | null>(null);
 
-// --------------------------- Computed: Select-Options ---------------------------
+// --------------------------- Computed: Select-Options ----------------
 const candidateOptions = computed(() =>
     (props.candidateMembers || [])
-        .filter(member => !props.currentMembers.some(cm => cm.person.domainIdentifier === member.person.domainIdentifier))
+        .filter(member => !props.currentMembers.some(cm => cm.person.domainIdentifier === member.person.domainIdentifier))  //  Nur Kandidaten, die noch nicht Mitglied sind
         .map(cm => ({ ...cm, displayName: fullName(cm) }))
 );
 
 // --------------------------- Helfer & API ---------------------------
+
+
+
+/**
+ * Prüft, ob ein Gruppenmitglied nicht gelöscht werden kann.
+ * 
+ * Ein Gruppenmitglied kann nicht entfernt werden, wenn:
+ * - Es sich um die Zielperson selbst handelt (Selbstentfernung ist nicht erlaubt)
+ * 
+ * Diese Funktion dient als Schutz gegen versehentliches Entfernen des eigenen
+ * Accounts aus einer Gruppe. Weitere Bedingungen (z.B. Auto-Gruppen) können
+ * hier ergänzt werden.
+ * 
+ * @param member - Das zu prüfende Gruppenmitglied
+ * @returns `true`, wenn das Mitglied nicht gelöscht werden kann, sonst `false`
+ */
+function isNotDeletable(member: GroupMember): boolean {
+    // Verhindert das Entfernen des eigenen Accounts
+    
+    if (member.person.domainIdentifier === props.targetPerson.person.domainIdentifier) {
+        return true;
+    }
+    return false;
+}
+
 
 /**
  * Erzeugt Anzeige-Namen für GroupMember in einer robusten, typsicheren Weise.
