@@ -65,7 +65,33 @@ export const EQUIP_INITIALS: Record<EquipId, '1' | '2' | '3' | '4'> = {
 export type FlowGroupId = typeof FLOW_GROUP_IDS[number];
 export type EquipId = typeof EQUIP_IDS[number];
 
-// Generische Funktion für Membership-Status-Mapping
+/**
+ * Erstellt eine strukturierte Darstellung des Mitgliedschaftsstatus für eine Liste von Gruppen.
+ * 
+ * Diese generische Funktion mappt Gruppen-Metadaten auf ein UI-freundliches Format,
+ * das den Mitgliedschaftsstatus, Labels, Tooltips und Editierbarkeit enthält.
+ * Sie wird verwendet, um Flow-, Equip-, Team- und andere Gruppenmitgliedschaften
+ * für die Anzeige in der UI (z.B. als Tags oder Avatare) aufzubereiten.
+ * 
+ * @template T - Record-Typ für das Label-Mapping (z.B. `Record<number, '!0' | '!1' | ...>`)
+ * 
+ * @param dataSet - Das vollständige Datensatz-Objekt einer Person mit allen Mitgliedschaften
+ * @param masterItems - Liste aller verfügbaren Gruppen (z.B. alle Flow-Schritte oder Equip-Levels)
+ * @param labelMapping - Mapping von Gruppen-ID zu Anzeige-Label (z.B. `{ 671: '!0', 674: '!1' }`)
+ * @param membershipProperty - Property-Name im dataSet, das die zu prüfenden Mitgliedschaften enthält
+ *                            (z.B. 'flow', 'equip', 'teams')
+ * 
+ * @returns Array von Status-Objekten mit folgenden Properties:
+ * - `id`: Gruppen-ID
+ * - `name`: Gruppenname
+ * - `isAutoGroup`: `true`, wenn Gruppe automatisch verwaltet wird (Tag ID 41)
+ * - `label`: Kurzes Anzeige-Label (z.B. '!2', '3')
+ * - `tooltip`: Vollständiger Tooltip-Text mit Name und optional Beitrittsdatum
+ * - `severity`: PrimeVue-Severity ('info' bei Mitgliedschaft, `null` sonst)
+ * - `isMember`: `true`, wenn Person in dieser Gruppe Mitglied ist
+ * - `editable`: `false` bei Auto-Gruppen, sonst `true` (ermöglicht UI-Kontrolle)
+ * 
+ */
 export const createMembershipStatus = <T extends Record<number, string>>(
     dataSet: TableDataSet,
     masterItems: Array<Group> | undefined,

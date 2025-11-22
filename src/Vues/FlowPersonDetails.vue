@@ -86,33 +86,22 @@
                     />
                 </div>
             </Fieldset>
-            <Fieldset legend="Nächster Schritt">
-                <DataTable
-                    :value="filterGroupMembersBySubFlowParent(props.data.subFlows, equipSubFlowParent!)"
-                    size="large"
-                    responsiveLayout="scroll"
-                    :pt="{ table: { style: 'min-width: 30rem' } }">
-                    <Column header="Step">
-                        <template #body="{ data: row }">
-                            {{ row?.group?.title ?? '–' }}
-                        </template>
-                    </Column>
-                    <Column header="Gestartet am">
-                        <template #body="{ data: row }">
-                            {{ formatDate(row?.memberStartDate) }}
-                        </template>
-                    </Column>
-                    <Column>
-                        <template #body="{data: row}">
-                            {{ formatTimeSince(row?.memberStartDate) }}
-                        </template>
-                    </Column>
-                </DataTable>
-            </Fieldset>
+            <SubFlowStepTable
+                legend="Nächster Schritt"
+                :members="props.data.subFlows"
+                :sub-flow-parent="equipSubFlowParent"
+            />
         </div>
 
         <!-- Taufe -->
         <div v-show="activeSection === 'taufe'">
+            <SubFlowStepTable
+                legend="Nächster Schritt"
+                :members="props.data.subFlows"
+                :sub-flow-parent="taufeSubFlowParent"
+                flow-url="https://app.eqrm.de/flows/start-flow?flow=taufe"
+                tooltip-text="Taufe Flow in neuem Tab öffnen"
+            />
             <Fieldset legend="Taufe">
                 <div v-if="taufeLoading">Lade Taufe-Daten…</div>
                 <div v-else-if="taufeError" class="text-red-600">Fehler: {{ taufeError }}</div>
@@ -127,40 +116,13 @@
         
         <!-- Team-Zugehörigkeit -->
         <div v-show="activeSection === 'team'">
-            <Fieldset legend="Nächster Schritt">
-                <div class="flex justify-content-between align-items-start gap-3 mt-2">
-                    <DataTable
-                        :value="filterGroupMembersBySubFlowParent(props.data.subFlows, teamsSubFlowParent!)"
-                        size="large"
-                        responsiveLayout="scroll"
-                        :pt="{ table: { style: 'min-width: 30rem' } }">
-                        <Column header="Step">
-                            <template #body="{ data: row }">
-                                {{ row?.group?.title ?? '–' }}
-                            </template>
-                        </Column>
-                        <Column header="Gestartet am">
-                            <template #body="{ data: row }">
-                                {{ formatDate(row?.memberStartDate) }}
-                            </template>
-                        </Column>
-                        <Column>
-                            <template #body="{data: row}">
-                                {{ formatTimeSince(row?.memberStartDate) }}
-                            </template>
-                        </Column>
-                    </DataTable>
-                    <Button 
-                        icon="pi pi-pencil" 
-                        :href="'https://app.eqrm.de/flows/start-flow?flow=teams'" 
-                        as="a"
-                        target="_blank"
-                        rounded
-                        outlined
-                        v-tooltip.bottom="'Teams Flow in neuem Tab öffnen'"
-                    </Button>
-                </div>
-            </Fieldset>            
+            <SubFlowStepTable
+                legend="Nächster Schritt"
+                :members="props.data.subFlows"
+                :sub-flow-parent="teamsSubFlowParent"
+                flow-url="https://app.eqrm.de/flows/start-flow?flow=teams"
+                tooltip-text="Teams Flow in neuem Tab öffnen"
+            />
             <Fieldset legend="Team-Zugehörigkeit">
                 <DataTable
                     :value="data.teams"
@@ -212,40 +174,13 @@
 
         <!-- Groups -->
         <div v-show="activeSection === 'groups'">
-            <Fieldset legend="Nächster Schritt">
-                <div class="flex justify-content-between align-items-start gap-3 mt-2">
-                    <DataTable
-                        :value="filterGroupMembersBySubFlowParent(props.data.subFlows, groupsSubFlowParent!)"
-                        size="large"
-                        responsiveLayout="scroll"
-                        :pt="{ table: { style: 'min-width: 30rem' } }">
-                        <Column header="Step">
-                            <template #body="{ data: row }">
-                                {{ row?.group?.title ?? '–' }}
-                            </template>
-                        </Column>
-                        <Column header="Gestartet am">
-                            <template #body="{ data: row }">
-                                {{ formatDate(row?.memberStartDate) }}
-                            </template>
-                        </Column>
-                        <Column>
-                            <template #body="{data: row}">
-                                {{ formatTimeSince(row?.memberStartDate) }}
-                            </template>
-                        </Column>
-                    </DataTable>
-                    <Button 
-                        icon="pi pi-pencil" 
-                        :href="'https://app.eqrm.de/flows/start-flow?flow=groups'" 
-                        as="a"
-                        target="_blank"
-                        rounded
-                        outlined
-                        v-tooltip.bottom="'Gruppen Flow in neuem Tab öffnen'"
-                    </Button>
-                </div>
-            </Fieldset>            
+            <SubFlowStepTable
+                legend="Nächster Schritt"
+                :members="props.data.subFlows"
+                :sub-flow-parent="groupsSubFlowParent"
+                flow-url="https://app.eqrm.de/flows/start-flow?flow=groups"
+                tooltip-text="Gruppen Flow in neuem Tab öffnen"
+            />
             <Fieldset legend="Group-Zugehörigkeit">
                 <DataTable
                     :value="data.groups"
@@ -297,40 +232,13 @@
 
         <!-- Offboarding -->
         <div v-show="activeSection === 'offboarding'">
-            <Fieldset legend="Offboarding">
-                <div class="flex justify-content-between align-items-start gap-3 mt-2">
-                    <DataTable
-                        :value="filterGroupMembersBySubFlowParent(props.data.subFlows, offboardingSubFlowParent!)"
-                        size="large"
-                        responsiveLayout="scroll"
-                        :pt="{ table: { style: 'min-width: 30rem' } }">
-                        <Column header="Step">
-                            <template #body="{ data: row }">
-                                {{ row?.group?.title ?? '–' }}
-                            </template>
-                        </Column>
-                        <Column header="Gestartet am">
-                            <template #body="{ data: row }">
-                                {{ formatDate(row?.memberStartDate) }}
-                            </template>
-                        </Column>
-                        <Column>
-                            <template #body="{data: row}">
-                                {{ formatTimeSince(row?.memberStartDate) }}
-                            </template>
-                        </Column>
-                    </DataTable>
-                    <Button 
-                        icon="pi pi-pencil" 
-                        :href="'https://app.eqrm.de/flows/start-flow?flow=offboarding'" 
-                        as="a"
-                        target="_blank"
-                        rounded
-                        outlined
-                        v-tooltip.bottom="'Offboarding Flow in neuem Tab öffnen'"
-                    </Button>
-                </div>
-            </Fieldset>            
+            <SubFlowStepTable
+                legend="Offboarding"
+                :members="props.data.subFlows"
+                :sub-flow-parent="offboardingSubFlowParent"
+                flow-url="https://app.eqrm.de/flows/start-flow?flow=offboarding"
+                tooltip-text="Offboarding Flow in neuem Tab öffnen"
+            />
         </div>
 
         <!-- Timeline Section -->
@@ -362,6 +270,7 @@ import AvatarDataColumn from './AvatarDataColumn.vue';
 import PersonTimeline from './PersonTimeline.vue';
 import GroupMemberEditor from './GroupMemberEditor.vue';
 import GroupEditor from './GroupEditor.vue';
+import SubFlowStepTable from './SubFlowStepTable.vue';
 
 // Types and Utils
 import { EQUIP_INITIALS, FLOW_CONFIG, type TableDataSet, type SubFlowStep } from '../types/flow';
@@ -440,6 +349,10 @@ const groupsSubFlowParent = computed(() =>
 
 const offboardingSubFlowParent = computed(() => 
     allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_OFFBOARDING)
+);
+
+const taufeSubFlowParent = computed(() => 
+    allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_TAUFE)
 );
 
 // =============================================================================
