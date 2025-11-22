@@ -7,6 +7,11 @@ import PrimeVue from 'primevue/config';
 import Aura from '@primevue/themes/aura';
 import Tooltip from 'primevue/tooltip';
 
+// PrimeIcons CSS importieren
+import 'primeicons/primeicons.css';
+
+// PrimeFlex CSS importieren (falls verwendet)
+import 'primeflex/primeflex.css';
 
 // only import reset.css in development mode to keep the production bundle small and to simulate CT environment
 if (import.meta.env.MODE === 'development') {

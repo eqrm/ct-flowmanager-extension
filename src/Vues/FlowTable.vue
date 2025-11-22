@@ -167,7 +167,6 @@
     import type { SubFlowStep, TableDataSet } from '../types/flow';
     import { FLOW_CONFIG, FLOW_GROUP_IDS, EQUIP_IDS, FLOW_INITIALS, EQUIP_INITIALS } from '../types/flow';
     import { FilterMatchMode } from '@primevue/core/api';
-    import 'primeicons/primeicons.css';
     import { ref, watch, onMounted, computed, inject } from 'vue';
     import DataTable from 'primevue/datatable';
     import Column from 'primevue/column';
