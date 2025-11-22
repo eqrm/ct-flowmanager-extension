@@ -115,7 +115,7 @@
         </div>
         
         <!-- Team-Zugehörigkeit -->
-        <div v-show="activeSection === 'team'">
+        <div v-show="activeSection === 'team'"> 
             <SubFlowStepTable
                 legend="Nächster Schritt"
                 :members="props.data.subFlows"
@@ -197,9 +197,24 @@
                             />
                         </template>
                     </Column>
-                    <Column header="Team">
+                    <Column header="Group">
                         <template #body="{ data: row }">
-                            {{ row?.group?.title ?? '–' }}
+                            <template v-if="row?.group">
+                                <div class="flex align-items-center gap-2">
+                                    <Tag 
+                                        v-bind="(() => {
+                                            const status = getGroupStatusConfig(row.group.domainAttributes.groupStatusId);
+                                            return { 
+                                                severity: status.severity, 
+                                                icon: status.icon, 
+                                                value: status.label 
+                                            };
+                                        })()"
+                                        rounded
+                                    />
+                                    <span>{{ row.group.title ?? '–' }}</span>
+                                </div>
+                            </template>
                         </template>
                     </Column>
                     <Column header="Rolle">
@@ -264,6 +279,7 @@ import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import Fieldset from 'primevue/fieldset';
 import MenuBar from 'primevue/menubar';
+import Tag from 'primevue/tag';
 
 // Local Components
 import AvatarDataColumn from './AvatarDataColumn.vue';
@@ -435,22 +451,6 @@ function getRoleString(roleId: number | null | undefined): string {
     return role ? role.name : '–';    
 }
 
-/**
- * Filtert GroupMembers nach Zugehörigkeit zu einem SubFlow-Parent.
- * 
- * Prüft, ob die Gruppen-ID eines GroupMembers in der childrenIds-Liste
- * des übergebenen SubFlow-Parents enthalten ist. Dadurch werden nur
- * Mitgliedschaften in Untergruppen (Children) des SubFlows zurückgegeben.
- * 
- * @param members - Array aller zu filternden GroupMember-Objekte
- * @param subFlow - SubFlowStep-Objekt, das die childrenIds-Liste enthält
- * @returns Gefiltertes Array mit GroupMembers, deren Gruppen Kinder des SubFlows sind
- */
-function filterGroupMembersBySubFlowParent(members: Array<GroupMember>, subFlow: SubFlowStep): Array<GroupMember> {
-    return members.filter(member => 
-        subFlow.childrenIds?.includes(Number(member.group.domainIdentifier)));
-}
-
 
 /**
  * Generische Funktion zur Erstellung von Vollnamen
@@ -516,41 +516,32 @@ function formatDate(isoDate: string | null | undefined): string {
 }
 
 /**
- * Berechnet die Zeitspanne seit einem Startdatum und formatiert sie als Text.
- * - Bis 14 Tage: "seit X Tagen"
- * - Ab 15 Tagen: "seit X Wochen"
+ * Gibt Severity, Icon und Label für einen Gruppenstatus zurück.
  * 
- * @param startDate - Startdatum im Format YYYY-MM-DD oder ISO-String
- * @returns Formatierter Text (z.B. "seit 5 Tagen" oder "seit 3 Wochen") oder '–' wenn kein Datum
+ * Mappt ChurchTools Gruppenstatus-IDs auf PrimeVue Tag-Konfigurationen
+ * mit passenden Farben und Icons für die UI-Darstellung.
+ * 
+ * @param statusId - ID des Gruppenstatus aus FLOW_CONFIG
+ * @returns Objekt mit severity (PrimeVue), icon (PrimeIcons) und label (Text)
  */
-function formatTimeSince(startDate: string | null | undefined): string {
-    if (!startDate) return '–';
-    
-    try {
-        const start = new Date(startDate);
-        const now = new Date();
-        
-        // Prüfe ob Datum gültig ist
-        if (isNaN(start.getTime())) return '–';
-        
-        // Berechne Differenz in Millisekunden
-        const diffMs = now.getTime() - start.getTime();
-        
-        // Berechne Tage (86400000 ms = 1 Tag)
-        const days = Math.floor(diffMs / 86400000);
-        
-        // Wenn mehr als 14 Tage, berechne Wochen
-        if (days > 14) {
-            const weeks = Math.floor(days / 7);
-            return `seit ${weeks} Woche${weeks !== 1 ? 'n' : ''}`;
-        }
-        
-        // Ansonsten Tage
-        return `seit ${days} Tag${days !== 1 ? 'en' : ''}`;
-        
-    } catch (error) {
-        console.error('Fehler beim Berechnen der Zeitspanne:', error);
-        return '–';
+function getGroupStatusConfig(statusId: number | null | undefined): {
+    severity: 'success' | 'warn' | 'secondary' | 'danger' | 'info' | 'contrast' | undefined;
+    icon: string;
+    label: string;
+} {
+    let label = masterData?.groupStatuses?.find(status => status.id === statusId)?.nameTranslated || 'Unbekannt';
+
+    switch (statusId) {
+        case FLOW_CONFIG.GROUP_STATUS_ACTIVE:
+            return { severity: 'success', icon: 'pi pi-check-circle', label: label };
+        case FLOW_CONFIG.GROUP_STATUS_PENDING:
+            return { severity: 'warn', icon: 'pi pi-clock', label: label };
+        case FLOW_CONFIG.GROUP_STATUS_ARCHIVED:
+            return { severity: 'secondary', icon: 'pi pi-inbox', label: label };
+        case FLOW_CONFIG.GROUP_STATUS_FINISHED:
+            return { severity: 'danger', icon: 'pi pi-times-circle', label: label };
+        default:
+            return { severity: 'info', icon: 'pi pi-question-circle', label: 'Unbekannt' };
     }
 }
 
