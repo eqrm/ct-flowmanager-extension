@@ -1,174 +1,174 @@
 <template class="p-fluid">
-    <div class="flex flex-column">
-    <Fieldset legend="Tag wählen" class="mt-2">
-        <div class="flex gap-2">
-            <FloatLabel variant="on">
-                <InputText 
-                    id="filter-text" 
-                    v-model="filterText" 
-                    style="min-width: 20rem">                            
-                </InputText>
-                <label for="filter-text">Suchtext</label>
-            </FloatLabel>
-            <FloatLabel variant="on">
-                <Select 
-                    v-model="filters.flow.value" 
-                    :options="allMasterFlowSteps" 
-                    placeholder="Select One" 
-                    style="min-width: 20rem" 
-                    :showClear="false" 
-                    optionLabel="name" 
-                    optionValue="id"
-                    id="flow-select">
-                    <template #option="slotProps">
-                        <Tag :value="slotProps.option.name"/>
+    <div class="flex flex-column gap-4 p-4">
+        <Fieldset legend="Tag wählen">
+            <div class="flex gap-2">
+                <FloatLabel variant="on">
+                    <InputText 
+                        id="filter-text" 
+                        v-model="filterText" 
+                        style="min-width: 20rem">                            
+                    </InputText>
+                    <label for="filter-text">Suchtext</label>
+                </FloatLabel>
+                <FloatLabel variant="on">
+                    <Select 
+                        v-model="filters.flow.value" 
+                        :options="allMasterFlowSteps" 
+                        placeholder="Select One" 
+                        style="min-width: 20rem" 
+                        :showClear="false" 
+                        optionLabel="name" 
+                        optionValue="id"
+                        id="flow-select">
+                        <template #option="slotProps">
+                            <Tag :value="slotProps.option.name"/>
+                        </template>
+                    </Select>
+                    <label for="flow-select">Tag</label>
+                </FloatLabel>
+                <Button
+                    class="ml-2" 
+                    icon="pi pi-search" 
+                    label="Suchen" 
+                    outlined
+                    rounded
+                    @click="fetchData({ page: 0, rows: MAX_ROWS })">
+                </Button>        
+            </div>
+        </Fieldset>
+        <Fieldset legend="Mitglieder im Flow" class="mt-2">        
+            <DataTable 
+                :value="tableDataSet" 
+                :paginator="true"
+                :rows="MAX_ROWS"
+                :totalRecords="totalRecords"
+                :loading="loading"
+                :lazy="true"
+                :sortField="serverSortField"
+                :sortOrder="serverSortOrder"
+                v-model:filters="filters"
+                filterDisplay="menu"
+                @sort="onServerSort"        
+                @page="fetchData"
+                dataKey="data.person.person.domainAttribute.id" 
+                responsiveLayout="scroll" 
+                rowExpansionTemplate="slotProps" 
+                columnResizeMode="fit">
+                
+                <!-- Name -->
+                <Column 
+                    field="vorname" 
+                    header="Vorname" 
+                    :sortable="true">
+                    <template #body="{ data }">
+                        {{ data.person.person.domainAttributes.firstName }}
                     </template>
-                </Select>
-                <label for="flow-select">Tag</label>
-            </FloatLabel>
-            <Button
-                class="ml-2" 
-                icon="pi pi-search" 
-                label="Suchen" 
-                outlined
-                rounded
-                @click="fetchData({ page: 0, rows: MAX_ROWS })">
-            </Button>        
-        </div>
-    </Fieldset>
-    <Fieldset legend="Mitglieder im Flow" class="mt-2">        
-        <DataTable 
-            :value="tableDataSet" 
-            :paginator="true"
-            :rows="MAX_ROWS"
-            :totalRecords="totalRecords"
-            :loading="loading"
-            :lazy="true"
-            :sortField="serverSortField"
-            :sortOrder="serverSortOrder"
-            v-model:filters="filters"
-            filterDisplay="menu"
-            @sort="onServerSort"        
-            @page="fetchData"
-            dataKey="data.person.person.domainAttribute.id" 
-            responsiveLayout="scroll" 
-            rowExpansionTemplate="slotProps" 
-            columnResizeMode="fit">
-            
-            <!-- Name -->
-            <Column 
-                field="vorname" 
-                header="Vorname" 
-                :sortable="true">
-                <template #body="{ data }">
-                    {{ data.person.person.domainAttributes.firstName }}
-                </template>
-            </Column>
-            <Column 
-                field="name" 
-                header="Name" 
-                :sortable="true">
-                <template #body="{ data }">
-                    {{ data.person.person.domainAttributes.lastName }}
-                </template>
-            </Column>
-            
-            <!-- Flow -->
-            <Column 
-                header="Tag"
-                field="flow" 
-                :showFilterMenu="true" 
-                :showFilterMatchModes="false">
-                <template #body="slotProps">
-                    <AvatarDataColumn
-                        :data="slotProps.data"
-                        :master-data="allMasterFlowSteps"
-                        :level-mapping="FLOW_INITIALS"
-                        data-property="flow"
-                    />
-                </template>
-            </Column> 
-            
-            <!-- Connect Leaders -->     
-            <Column 
-                field="connect" 
-                header="Connect" 
-                :showFilterMenu="false">
-                <template #body="slotProps">                
-                    <div class="flex grid gap-2">
-                        <div v-for="leader in slotProps.data.connectLeaders" :key="leader.id">
-                            <Avatar 
-                                :label="leader.person.initials" 
-                                v-tooltip.bottom="fullName(leader)"/>
+                </Column>
+                <Column 
+                    field="name" 
+                    header="Name" 
+                    :sortable="true">
+                    <template #body="{ data }">
+                        {{ data.person.person.domainAttributes.lastName }}
+                    </template>
+                </Column>
+                
+                <!-- Flow -->
+                <Column 
+                    header="Tag"
+                    field="flow" 
+                    :showFilterMenu="true" 
+                    :showFilterMatchModes="false">
+                    <template #body="slotProps">
+                        <AvatarDataColumn
+                            :data="slotProps.data"
+                            :master-data="allMasterFlowSteps"
+                            :level-mapping="FLOW_INITIALS"
+                            data-property="flow"
+                        />
+                    </template>
+                </Column> 
+                
+                <!-- Connect Leaders -->     
+                <Column 
+                    field="connect" 
+                    header="Connect" 
+                    :showFilterMenu="false">
+                    <template #body="slotProps">                
+                        <div class="flex grid gap-2">
+                            <div v-for="leader in slotProps.data.connectLeaders" :key="leader.id">
+                                <Avatar 
+                                    :label="leader.person.initials" 
+                                    v-tooltip.bottom="fullName(leader)"/>
+                            </div>
                         </div>
-                    </div>
-                </template>
-            </Column>
-            
-            <Column 
-                field="equip" 
-                header="Equip" 
-                :showFilterMenu="false">
-                <template #body="slotProps">
-                    <AvatarDataColumn
-                        :data="slotProps.data"
-                        :master-data="allEquipSteps"
-                        :level-mapping="EQUIP_INITIALS"
-                        data-property="equip"
-                    />
-                </template>
-            </Column>
-            
-            <!-- Nächster Schritt -->     
-            <Column 
-                field="subFlows" 
-                header="Nächster Schritt" 
-                :showFilterMenu="false">
-                <template #body="slotProps">
-                    <div class="flex flex-wrap grid gap-2">
-                        <div v-for="flow in slotProps.data.subFlows" :key="flow.id">
-                            <Tag severity="secondary" >{{ flow.group.title }}</Tag>
-                        </div> 
-                    </div>
-                </template>
-            </Column>
-            
-            <!-- letzte Änderung -->
-            <Column 
-                field="joined" 
-                header="Mitglied seit" 
-                dataType="date"
-                :sortable="true">
-                <template #body="{ data }">
-                    {{ data.person.memberStartDate ? new Date(data.person.memberStartDate).toLocaleDateString() : '–' }}
-                </template>
-            </Column>
-            
-            <!-- Aktionen -->
-            <Column>
-                <template #body="slotProps">
-                    <Button 
-                        v-tooltip.bottom="`Kontakt von ${fullName(slotProps.data.person)} im Personen-Modul öffnen`"
-                        icon="pi pi-user" 
-                        class="p-button-text" 
-                        as="a" 
-                        target="_blank" 
-                        :href="getPersonUrl(slotProps.data.person.person.domainIdentifier)" 
-                    />
-                </template>
-            </Column>
-            <Column>
-                <template #body="slotProps">
-                    <Button 
-                        v-tooltip.bottom="` ${fullName(slotProps.data.person)} bearbeiten`"
-                        icon="pi pi-pencil" 
-                        class="p-button-text"
-                        @click="openPersonDialog(slotProps.data)"
-                    />
-                </template>
-            </Column>
-        </DataTable>
-    </Fieldset> 
+                    </template>
+                </Column>
+                
+                <Column 
+                    field="equip" 
+                    header="Equip" 
+                    :showFilterMenu="false">
+                    <template #body="slotProps">
+                        <AvatarDataColumn
+                            :data="slotProps.data"
+                            :master-data="allEquipSteps"
+                            :level-mapping="EQUIP_INITIALS"
+                            data-property="equip"
+                        />
+                    </template>
+                </Column>
+                
+                <!-- Nächster Schritt -->     
+                <Column 
+                    field="subFlows" 
+                    header="Nächster Schritt" 
+                    :showFilterMenu="false">
+                    <template #body="slotProps">
+                        <div class="flex flex-wrap grid gap-2">
+                            <div v-for="flow in slotProps.data.subFlows" :key="flow.id">
+                                <Tag severity="secondary" >{{ flow.group.title }}</Tag>
+                            </div> 
+                        </div>
+                    </template>
+                </Column>
+                
+                <!-- letzte Änderung -->
+                <Column 
+                    field="joined" 
+                    header="Mitglied seit" 
+                    dataType="date"
+                    :sortable="true">
+                    <template #body="{ data }">
+                        {{ data.person.memberStartDate ? new Date(data.person.memberStartDate).toLocaleDateString() : '–' }}
+                    </template>
+                </Column>
+                
+                <!-- Aktionen -->
+                <Column>
+                    <template #body="slotProps">
+                        <Button 
+                            v-tooltip.bottom="`Kontakt von ${fullName(slotProps.data.person)} im Personen-Modul öffnen`"
+                            icon="pi pi-user" 
+                            class="p-button-text" 
+                            as="a" 
+                            target="_blank" 
+                            :href="getPersonUrl(slotProps.data.person.person.domainIdentifier)" 
+                        />
+                    </template>
+                </Column>
+                <Column>
+                    <template #body="slotProps">
+                        <Button 
+                            v-tooltip.bottom="` ${fullName(slotProps.data.person)} bearbeiten`"
+                            icon="pi pi-pencil" 
+                            class="p-button-text"
+                            @click="openPersonDialog(slotProps.data)"
+                        />
+                    </template>
+                </Column>
+            </DataTable>
+        </Fieldset> 
     </div>
     <!-- Dialog mit den Details der ausgewählten Zeile -->
     <FlowPersonDetails

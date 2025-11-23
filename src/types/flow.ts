@@ -40,6 +40,25 @@ export const FLOW_CONFIG = {
     FLOW_ID_OFFBOARDING: 2761,
 } as const;
 
+export type EqrmAppFlowType =
+    | 'egroups'
+    | 'teamconnect'
+    | 'taufe'
+    | 'offboarding'
+    | 'equip';
+
+export const EQRM_APP_CONFIG = {
+    BASE_URL: 'https://app.eqrm.de/',
+    FLOW_URL: 'flows/start-flow',
+    FLOW_PARAM_FLOW: 'flow',
+    FLOW_PARAM_VALUE_EGROUPS: 'egroups',
+    FLOW_PARAM_VALUE_TEAMS: 'teamconnect',
+    FLOW_PARAM_VALUE_TAUFE: 'taufe',
+    FLOW_PARAM_VALUE_OFFBOARDING: 'offboarding',
+    FLOW_PARAM_VALUE_EQUIP: 'equip',
+} as const;
+
+
 // Flow Group IDs (!0New - !6Friend)
 export const FLOW_GROUP_IDS = [671, 674, 677, 680, 683, 686, 1046] as const;
 
@@ -68,6 +87,44 @@ export const EQUIP_INITIALS: Record<EquipId, '1' | '2' | '3' | '4'> = {
 // Type guards for better type safety
 export type FlowGroupId = typeof FLOW_GROUP_IDS[number];
 export type EquipId = typeof EQUIP_IDS[number];
+
+
+/**
+ * Generiert eine vollständige URL zum Starten eines Flows in der EQRM-App.
+ * 
+ * Diese Hilfsfunktion erstellt Links zu verschiedenen Flow-Typen (eGroups, TeamConnect, 
+ * Taufe, Offboarding, Equip) in der externen EQRM-Anwendung. Die generierten URLs
+ * können direkt für Buttons oder Links verwendet werden, die Flows in einem neuen Tab öffnen.
+ * 
+ * @param flowType - Der Typ des zu startenden Flows
+ *                   ('egroups' | 'teamconnect' | 'taufe' | 'offboarding' | 'equip')
+ * 
+ * @returns Vollständige URL zum Flow-Start in der EQRM-App
+ * 
+ * @example
+ * ```typescript
+ * const equipUrl = getAppLinkForFlow('equip');
+ * // => 'https://app.eqrm.de/flows/start-flow?flow=equip'
+ * 
+ * const groupsUrl = getAppLinkForFlow('egroups');
+ * // => 'https://app.eqrm.de/flows/start-flow?flow=egroups'
+ * ```
+ * 
+ * @example
+ * ```vue
+ * <Button 
+ *   :href="getAppLinkForFlow('teamconnect')" 
+ *   as="a"
+ *   target="_blank"
+ * />
+ * ```
+ */
+export const getAppLinkForFlow = (flowType: EqrmAppFlowType): string => {
+    let baseUrl = EQRM_APP_CONFIG.BASE_URL;
+    let flowUrl = EQRM_APP_CONFIG.FLOW_URL;
+    let flowParam = EQRM_APP_CONFIG.FLOW_PARAM_FLOW;
+    return `${baseUrl}${flowUrl}?${flowParam}=${flowType}`;
+};
 
 /**
  * Erstellt eine strukturierte Darstellung des Mitgliedschaftsstatus für eine Liste von Gruppen.

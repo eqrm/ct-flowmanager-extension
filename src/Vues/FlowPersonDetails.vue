@@ -76,8 +76,8 @@
                         data-property="equip"
                     />
                     <Button 
-                        icon="pi pi-pencil" 
-                        :href="'https://app.eqrm.de/flows/start-flow?flow=equip'" 
+                        icon="pi pi-sitemap" 
+                        :href="getAppLinkForFlow('equip')" 
                         as="a"
                         target="_blank"
                         rounded
@@ -99,7 +99,7 @@
                 legend="Nächster Schritt"
                 :members="props.data.subFlows"
                 :sub-flow-parent="taufeSubFlowParent"
-                flow-url="https://app.eqrm.de/flows/start-flow?flow=taufe"
+                :flow-url="getAppLinkForFlow('taufe')"
                 tooltip-text="Taufe Flow in neuem Tab öffnen"
             />
             <Fieldset legend="Taufe">
@@ -120,7 +120,7 @@
                 legend="Nächster Schritt"
                 :members="props.data.subFlows"
                 :sub-flow-parent="teamsSubFlowParent"
-                flow-url="https://app.eqrm.de/flows/start-flow?flow=teams"
+                :flow-url="getAppLinkForFlow('teamconnect')"
                 tooltip-text="Teams Flow in neuem Tab öffnen"
             />
             <Fieldset legend="Team-Zugehörigkeit">
@@ -178,7 +178,7 @@
                 legend="Nächster Schritt"
                 :members="props.data.subFlows"
                 :sub-flow-parent="groupsSubFlowParent"
-                flow-url="https://app.eqrm.de/flows/start-flow?flow=groups"
+                :flow-url="getAppLinkForFlow('egroups')"
                 tooltip-text="Gruppen Flow in neuem Tab öffnen"
             />
             <Fieldset legend="Group-Zugehörigkeit">
@@ -251,7 +251,7 @@
                 legend="Offboarding"
                 :members="props.data.subFlows"
                 :sub-flow-parent="offboardingSubFlowParent"
-                flow-url="https://app.eqrm.de/flows/start-flow?flow=offboarding"
+                :flow-url="getAppLinkForFlow('offboarding')"
                 tooltip-text="Offboarding Flow in neuem Tab öffnen"
             />
         </div>
@@ -289,7 +289,7 @@ import GroupEditor from './GroupEditor.vue';
 import SubFlowStepTable from './SubFlowStepTable.vue';
 
 // Types and Utils
-import { EQUIP_INITIALS, FLOW_CONFIG, type TableDataSet, type SubFlowStep } from '../types/flow';
+import { EQUIP_INITIALS, FLOW_CONFIG, getAppLinkForFlow, type TableDataSet, type SubFlowStep } from '../types/flow';
 import type { Person, Group, GroupMember, PersonMasterData } from '../utils/ct-types';
 import type { MenuItem } from 'primevue/menuitem';
 import { churchtoolsClient } from '@churchtools/churchtools-client';

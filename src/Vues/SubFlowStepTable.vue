@@ -24,7 +24,7 @@
             </DataTable>
             <Button 
                 v-if="flowUrl"
-                icon="pi pi-pencil" 
+                icon="pi pi-sitemap" 
                 :href="flowUrl" 
                 as="a"
                 target="_blank"
