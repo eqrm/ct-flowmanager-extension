@@ -38,12 +38,13 @@
         <!-- Connect Section -->
         <div v-show="activeSection === 'connect'">
             <GroupMemberEditor
-                :current-members="data.connectLeaders"
-                :candidate-members="allConnectGroupLeaders"
+                :targetPersonsGroupMemberships="data.connect"
+                :currentGroupLeaders="data.connectLeaders"
+                :candidateGroupLeaders="allConnectGroupLeaders"
                 :target-person="data.person"
                 :role-id="FLOW_CONFIG.CONNECT_MEMBERS_ROLE_ID"
-                current-members-title="Aktuelle Connectoren"
-                add-member-title="Connector hinzufügen"
+                currentGroupLeadersTitle="Aktuelle Connectoren"
+                addGroupLeaderTitle="Connector hinzufügen"
                 select-placeholder="Connector auswählen..."
                 @member-added="onConnectLeaderAdded"
                 @member-removed="onConnectLeaderRemoved"
@@ -300,7 +301,7 @@ import { churchtoolsClient } from '@churchtools/churchtools-client';
 
 const props = defineProps<{
     data: TableDataSet;
-    connectLeaders: Array<GroupMember>;
+    //connectLeaders: Array<GroupMember>;
     visible: boolean;
 }>();
 
@@ -430,6 +431,47 @@ const menuItems = ref<MenuItem[]>([
     }
 ]);
 
+
+// =============================================================================
+// EVENT HANDLERS
+// =============================================================================
+
+function handleDialogShow(): void {
+    console.log('Dialog geöffnet für Person:', personId.value);
+    activeSection.value = 'connect';
+}
+
+function onConnectLeaderAdded(groupLeader: GroupMember, groupMember: GroupMember): void {
+    console.log('GroupMember hinzugefügt.', 'Leader:', groupLeader, 'Member:', groupMember);
+    props.data.connectLeaders.push(groupLeader);
+    props.data.connect.push(groupMember);
+}
+
+function onConnectLeaderRemoved(groupLeader: GroupMember, groupMember: GroupMember): void {
+    console.log('GroupMember entfernt.', 'Leader:', groupLeader, 'Member:', groupMember);
+    props.data.connectLeaders = props.data.connectLeaders.filter(
+        cl => cl.person.domainIdentifier !== groupLeader.person.domainIdentifier
+    );
+    props.data.connect = props.data.connect.filter(
+        cm => !(cm.group.domainIdentifier === groupLeader.group.domainIdentifier &&
+        cm.person.domainIdentifier === groupMember.person.domainIdentifier)
+    );
+}
+
+function onMasterFlowAdded(member: GroupMember): void {
+    console.log('Master Flow hinzugefügt:', member);
+    props.data.flow.push(member);
+}
+
+function onMasterFlowRemoved(member: GroupMember): void {
+    console.log('Master Flow entfernt:', member);
+    props.data.flow = props.data.flow.filter(
+        f => f.group.domainIdentifier !== member.group.domainIdentifier
+    );
+}
+
+
+
 // =============================================================================
 // UTILITY FUNCTIONS
 // =============================================================================
@@ -545,41 +587,7 @@ function getGroupStatusConfig(statusId: number | null | undefined): {
     }
 }
 
-// =============================================================================
-// EVENT HANDLERS
-// =============================================================================
 
-function handleDialogShow(): void {
-    console.log('Dialog geöffnet für Person:', personId.value);
-    activeSection.value = 'connect';
-}
-
-// ----------------- Event-Handler für GroupMemberEditor -----------------
-
-// Connect (GroupMember-Modus)
-function onConnectLeaderAdded(member: GroupMember): void {
-    console.log('GroupMember hinzugefügt:', member);
-    props.data.connectLeaders.push(member);
-}
-
-function onConnectLeaderRemoved(member: GroupMember): void {
-    console.log('GroupMember entfernt:', member);
-    props.data.connectLeaders = props.data.connectLeaders.filter(
-        cl => cl.person.domainIdentifier !== member.person.domainIdentifier
-    );
-}
-
-function onMasterFlowAdded(member: GroupMember): void {
-    console.log('Master Flow hinzugefügen:', member);
-    props.data.flow.push(member);
-}
-
-function onMasterFlowRemoved(member: GroupMember): void {
-    console.log('Master Flow entfernt:', member);
-    props.data.flow = props.data.flow.filter(
-        f => f.group.domainIdentifier !== member.group.domainIdentifier
-    );
-}
 
 /**
  * Lädt Personendaten, wenn die Taufe-Sektion aktiviert wird.

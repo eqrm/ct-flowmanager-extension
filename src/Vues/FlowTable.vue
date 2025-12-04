@@ -97,9 +97,13 @@
                     <template #body="slotProps">                
                         <div class="flex grid gap-2">
                             <div v-for="leader in slotProps.data.connectLeaders" :key="leader.id">
+                                <OverlayBadge 
+                                    :severity="getMemberSeverity(getGroupMemberByConnectLeader(leader, slotProps.data.connect))" 
+                                    class="mr-2">
                                 <Avatar 
                                     :label="leader.person.initials" 
-                                    v-tooltip.bottom="fullName(leader)"/>
+                                    v-tooltip.bottom="fullName(leader) + ` (${getMembershipStatusText(getGroupMemberByConnectLeader(leader, slotProps.data.connect))})`"/>
+                                </OverlayBadge>
                             </div>
                         </div>
                     </template>
@@ -180,7 +184,7 @@
 </template>
 
 <script lang="ts" setup>
-    import type { Group, GroupMember, MetaPagination } from '../utils/ct-types';
+    import type { Group, GroupMember, MetaPagination, MemberStatus } from '../utils/ct-types';
     import type { PageResponse, Params } from '@churchtools/churchtools-client/dist/churchtoolsClient';
     import { churchtoolsClient } from '@churchtools/churchtools-client';
     import type { SubFlowStep, TableDataSet } from '../types/flow';
@@ -198,6 +202,7 @@
     import Fieldset from 'primevue/fieldset';
     import FloatLabel from 'primevue/floatlabel';
     import InputText from 'primevue/inputtext';
+    import OverlayBadge from 'primevue/overlaybadge';
 
     type DataTablePageEvent = { page: number; rows: number };
 
@@ -312,27 +317,30 @@
 
             const rows: TableDataSet[] = await Promise.all(
                 flowGroupMember.map(async (groupMember) => {
-                    const personGroups = await churchtoolsClient.get<Array<GroupMember>>(`/persons/${groupMember.person.domainIdentifier}/groups`);
-                    const subFlowGroups = personGroups.filter(g => {
+                    const personsGroups = await churchtoolsClient.get<Array<GroupMember>>(
+                        `/persons/${groupMember.person.domainIdentifier}/groups`, {
+                        show_to_delete_memberships: true,               //  default: false
+                        show_requested_or_waiting_memberships: true     //  default: false    
+                    });
+                    const subFlowGroups = personsGroups.filter(g => {
                         const isFlowType = g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_FLOW;
                         const isNotMainFlow = !FLOW_GROUP_IDS.includes(Number(g.group.domainIdentifier) as any);
                         return isFlowType && isNotMainFlow;
                     });
-                    const flowGroups = personGroups.filter(g => {
+                    const flowGroups = personsGroups.filter(g => {
                         const isFlowType = g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_FLOW;
                         const isMainFlow = FLOW_GROUP_IDS.includes(Number(g.group.domainIdentifier) as any);
                         return isFlowType && isMainFlow;
                     });
-                    const equipGroups = personGroups.filter(g => {
+                    const equipGroups = personsGroups.filter(g => {
                         const isEquipType = g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_MERKMAL;
                         const isEquipGroup = EQUIP_IDS.includes(Number(g.group.domainIdentifier) as any);                    
                         return isEquipType && isEquipGroup;
                     });
-                    const connectGroups = personGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.CONNECT_GROUPTYPE_ID);
+                    const connectGroups = personsGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.CONNECT_GROUPTYPE_ID);
                     const flowGroupJoins = flowGroups.map(g => g.memberStartDate ? new Date(g.memberStartDate) : null);
-                    const groups = personGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_GROUP);
-                    const teams = personGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_TEAM);
-
+                    const groups = personsGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_GROUP);
+                    const teams = personsGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_TEAM);
                     return {
                         person: groupMember,
                         flow: flowGroups,
@@ -374,6 +382,38 @@
         
         return parts.join(' ') || 'Unbekannt';
     };
+
+    type MemberSeverity = 'secondary' | 'success' | 'info' | 'warn' | 'danger' | 'contrast' | null;
+
+    const getGroupMemberByConnectLeader = (connectLeader: GroupMember, membersConnectGroups: Array<GroupMember>): GroupMember | null => {
+        return membersConnectGroups.find(m => m.group.domainIdentifier === connectLeader.group.domainIdentifier) || null;
+    };
+
+    const getMemberSeverity = (member: GroupMember | null): MemberSeverity => {
+        const memberStatus = member?.groupMemberStatus;
+        if (!memberStatus) {
+            return null;
+        }
+        const statusMap: Record<MemberStatus, MemberSeverity> = {
+            active: 'success',
+            requested: 'warn',
+            to_delete: 'danger',
+            waiting: 'info'
+        };
+    return statusMap[memberStatus];
+    };
+
+    const getMembershipStatusText = (member: GroupMember | null): string => {
+        const statusMap: Record<MemberStatus, string> = {
+            active: 'Durch Connecter übernommen',
+            requested: 'An Connecter zugewiesen',
+            to_delete: 'Connect abgeschlossen',
+            waiting: 'Wartet'
+        };
+        return member ? statusMap[member.groupMemberStatus] : 'unknown';
+    }
+
+
 
     /**
      * Erstellt die ChurchTools Personen-URL für das PersonView-Modul.
