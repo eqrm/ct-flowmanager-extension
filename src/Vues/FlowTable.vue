@@ -8,13 +8,12 @@
                         v-model="filterText" 
                         style="min-width: 20rem">                            
                     </InputText>
-                    <label for="filter-text">Suchtext</label>
+                    <label for="filter-text">Person</label>
                 </FloatLabel>
                 <FloatLabel variant="on">
                     <Select 
                         v-model="filters.flow.value" 
                         :options="allMasterFlowSteps" 
-                        placeholder="Select One" 
                         style="min-width: 20rem" 
                         :showClear="false" 
                         optionLabel="name" 
@@ -33,7 +32,24 @@
                     outlined
                     rounded
                     @click="fetchData({ page: 0, rows: MAX_ROWS })">
-                </Button>        
+                </Button>
+                <Button
+                    class="ml-2" 
+                    icon="pi pi-pencil" 
+                    outlined
+                    rounded
+                    @click="personPickerVisible = true"
+                    v-tooltip.bottom="`Erweiterte Suche`">
+                </Button>
+                <Button
+                    class="ml-2" 
+                    icon="pi pi-times" 
+                    severity="info"
+                    outlined
+                    rounded
+                    @click="filterText = null; filters.flow.value = FLOW_GROUP_IDS[0]; fetchData({ page: 0, rows: MAX_ROWS })"
+                    v-tooltip.bottom="`Suche leeren`">
+                </Button>
             </div>
         </Fieldset>
         <Fieldset legend="Mitglieder im Flow" class="mt-2">        
@@ -180,11 +196,15 @@
         v-model:visible="personDialogVisible"
         :data="selectedRow"
         :connectLeaders="connectGroupSetInstance.allConnectGroupLeaders"
-    />    
+    />
+    <PersonPickerDialog
+        v-model:visible="personPickerVisible"
+        @confirm="onPersonPickerConfirm"
+    />
 </template>
 
 <script lang="ts" setup>
-    import type { Group, GroupMember, MetaPagination, MemberStatus } from '../utils/ct-types';
+    import type { Group, DomainObjectPerson, GroupMember, MetaPagination, MemberStatus } from '../utils/ct-types';
     import type { PageResponse, Params } from '@churchtools/churchtools-client/dist/churchtoolsClient';
     import { churchtoolsClient } from '@churchtools/churchtools-client';
     import type { SubFlowStep, TableDataSet } from '../types/flow';
@@ -203,6 +223,7 @@
     import FloatLabel from 'primevue/floatlabel';
     import InputText from 'primevue/inputtext';
     import OverlayBadge from 'primevue/overlaybadge';
+    import PersonPickerDialog from './PersonPickerDialog.vue';
 
     type DataTablePageEvent = { page: number; rows: number };
 
@@ -254,6 +275,7 @@
     const allEquipSteps = inject<Array<SubFlowStep>>('allEquipSteps');
 
     const personDialogVisible = ref(false);
+    const personPickerVisible = ref(false);
     const selectedRow = ref<TableDataSet | null>(null);
     const openPersonDialog = (row: TableDataSet) => {
         selectedRow.value = row;
@@ -292,6 +314,19 @@
         serverSortField.value = event.sortField;
         serverSortOrder.value = event.sortOrder;
     };
+
+
+    const onPersonPickerConfirm = (payload: { person: DomainObjectPerson & { displayName: string }, groups: Array<GroupMember> }) => {
+        if (!payload.person) return;
+        if (!payload.groups || payload.groups.length === 0) return;
+        if (!payload.groups[0].group.domainAttributes.groupTypeId) return;
+
+        filterText.value = payload.person.displayName;
+        filters.value.flow.value = Number(payload.groups[payload.groups.length - 1]?.group.domainIdentifier); 
+        fetchData({ page: 0, rows: MAX_ROWS });
+        personPickerVisible.value = false;
+    };
+
 
     const fetchData = async (event: DataTablePageEvent) => {
         loading.value = true;
