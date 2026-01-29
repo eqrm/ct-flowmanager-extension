@@ -204,13 +204,37 @@
 </template>
 
 <script lang="ts" setup>
-    import type { Group, DomainObjectPerson, GroupMember, MetaPagination, MemberStatus } from '../utils/ct-types';
-    import type { PageResponse, Params } from '@churchtools/churchtools-client/dist/churchtoolsClient';
-    import { churchtoolsClient } from '@churchtools/churchtools-client';
-    import type { SubFlowStep, TableDataSet } from '../types/flow';
-    import { FLOW_CONFIG, FLOW_GROUP_IDS, EQUIP_IDS, FLOW_INITIALS, EQUIP_INITIALS } from '../types/flow';
-    import { FilterMatchMode } from '@primevue/core/api';
-    import { ref, watch, onMounted, computed, inject } from 'vue';
+    import type { 
+        Group, 
+        DomainObjectPerson,
+        PersonMasterData,
+        PersonSetting,
+        Person,
+        GroupMember, 
+        MetaPagination, 
+        MemberStatus } from '../utils/ct-types';
+    import type { 
+        PageResponse, 
+        Params } from '@churchtools/churchtools-client/dist/churchtoolsClient';
+    import { 
+        churchtoolsClient } from '@churchtools/churchtools-client';
+    import type { 
+        SubFlowStep, 
+        TableDataSet } from '../types/flow';
+    import { 
+        FLOW_CONFIG, 
+        FLOW_GROUP_IDS, 
+        EQUIP_IDS, 
+        FLOW_INITIALS, 
+        EQUIP_INITIALS } from '../types/flow';
+    import { 
+        FilterMatchMode } from '@primevue/core/api';
+    import { 
+        ref, 
+        watch, 
+        onMounted, 
+        computed, 
+        inject } from 'vue';
     import DataTable from 'primevue/datatable';
     import Column from 'primevue/column';
     import Button from 'primevue/button';
@@ -273,6 +297,7 @@
     const loading = ref(false);
     const allMasterFlowSteps = inject<Array<Group>>('allMasterFlowSteps');
     const allEquipSteps = inject<Array<SubFlowStep>>('allEquipSteps');
+    const whoami = inject<Person>('whoami');
 
     const personDialogVisible = ref(false);
     const personPickerVisible = ref(false);
@@ -310,6 +335,8 @@
 
     const selectedFlowId = computed(() => filters.value.flow.value as number | null);
 
+    const currentUserId = computed(() => Number(whoami?.id));
+
     const onServerSort = (event: any) => {
         serverSortField.value = event.sortField;
         serverSortOrder.value = event.sortOrder;
@@ -331,6 +358,9 @@
     const fetchData = async (event: DataTablePageEvent) => {
         loading.value = true;
         try {            
+            const stationId = await fetchStationFilterId(currentUserId.value);
+            console.log('Station ID for filtering:', stationId);
+
             const sortField = orderFields[serverSortField.value] ?? 'person_lastName';
             const sortDir = orderDirections[String(serverSortOrder.value) as '1' | '-1'];
             const flowGroupId = selectedFlowId.value ?? FLOW_GROUP_IDS[0];
@@ -458,6 +488,17 @@
      */
     const getPersonUrl = (personId: string): string => {
         return `https://eqrm.church.tools/?q=churchdb#PersonView/searchEntry:${personId}`;
+    };
+
+    
+    const fetchStationFilterId = async (id: number): Promise<number | null> => {
+        try {
+            const personSettings = await churchtoolsClient.get<PersonSetting | null>(`/persons/${id}/settings/global/station`);
+            return Number(personSettings?.value);
+        } catch (error) {
+            console.error('Error fetching person settings:', error);
+            return null;
+        }
     };
 
 </script>
