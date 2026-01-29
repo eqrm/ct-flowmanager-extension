@@ -84,9 +84,13 @@ export const EQUIP_INITIALS: Record<EquipId, '1' | '2' | '3' | '4'> = {
     1258: '4'
 } as const;
 
+// Equip Event Group IDs
+export const EQUIP_EVENT_IDS = [2286, 2289, 2292, 2423] as const;
+
 // Type guards for better type safety
 export type FlowGroupId = typeof FLOW_GROUP_IDS[number];
 export type EquipId = typeof EQUIP_IDS[number];
+export type EquipEventId = typeof EQUIP_EVENT_IDS[number];
 
 
 /**

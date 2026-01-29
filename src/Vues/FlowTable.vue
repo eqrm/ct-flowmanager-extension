@@ -204,131 +204,214 @@
 </template>
 
 <script lang="ts" setup>
-    import type { Group, DomainObjectPerson, GroupMember, MetaPagination, MemberStatus } from '../utils/ct-types';
-    import type { PageResponse, Params } from '@churchtools/churchtools-client/dist/churchtoolsClient';
-    import { churchtoolsClient } from '@churchtools/churchtools-client';
-    import type { SubFlowStep, TableDataSet } from '../types/flow';
-    import { FLOW_CONFIG, FLOW_GROUP_IDS, EQUIP_IDS, FLOW_INITIALS, EQUIP_INITIALS } from '../types/flow';
-    import { FilterMatchMode } from '@primevue/core/api';
-    import { ref, watch, onMounted, computed, inject } from 'vue';
-    import DataTable from 'primevue/datatable';
-    import Column from 'primevue/column';
-    import Button from 'primevue/button';
-    import Avatar from 'primevue/avatar';
-    import Tag from 'primevue/tag';
-    import Select from 'primevue/select';
-    import FlowPersonDetails from './FlowPersonDetails.vue';
-    import AvatarDataColumn from './AvatarDataColumn.vue';
-    import Fieldset from 'primevue/fieldset';
-    import FloatLabel from 'primevue/floatlabel';
-    import InputText from 'primevue/inputtext';
-    import OverlayBadge from 'primevue/overlaybadge';
-    import PersonPickerDialog from './PersonPickerDialog.vue';
+import { ref, watch, onMounted, computed, inject } from 'vue';
 
-    type DataTablePageEvent = { page: number; rows: number };
+// PrimeVue Components
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import Button from 'primevue/button';
+import Avatar from 'primevue/avatar';
+import Tag from 'primevue/tag';
+import Select from 'primevue/select';
+import Fieldset from 'primevue/fieldset';
+import FloatLabel from 'primevue/floatlabel';
+import InputText from 'primevue/inputtext';
+import OverlayBadge from 'primevue/overlaybadge';
+import { FilterMatchMode } from '@primevue/core/api';
 
-    // ConnectGroupSet class bleibt unverändert...
-    class ConnectGroupSet {
-        private _allConnectGroups: Array<Group> = [];
-        private _allConnectGroupLeaders: Array<GroupMember> = [];
+// Local Components
+import FlowPersonDetails from './FlowPersonDetails.vue';
+import AvatarDataColumn from './AvatarDataColumn.vue';
+import PersonPickerDialog from './PersonPickerDialog.vue';
 
-        public async reload() {
-            try {
-                this._allConnectGroups = (await churchtoolsClient.getAllPages<Array<Group>>('/groups', {
-                    group_type_ids: [FLOW_CONFIG.CONNECT_GROUPTYPE_ID]
-                })).flat();
-                
-                this._allConnectGroupLeaders = (await Promise.all(
-                    this._allConnectGroups.map(async g => {
-                        const connectgroupLeaders = (await churchtoolsClient.get<Array<GroupMember>>(`/groups/${g.id}/members`))
-                            .filter(m => m.groupTypeRoleId === FLOW_CONFIG.CONNECT_LEADERS_ROLE_ID);
-                        return connectgroupLeaders;
-                    })
-                )).flat();
-            }
-            catch (error) {
-                console.error('Error fetching connect groups or leaders:', error);
-            }
+// Types and Utils
+import type { Group, DomainObjectPerson, GroupMember, MetaPagination, MemberStatus } from '../utils/ct-types';
+import type { PageResponse, Params } from '@churchtools/churchtools-client/dist/churchtoolsClient';
+import { churchtoolsClient } from '@churchtools/churchtools-client';
+import type { SubFlowStep, TableDataSet } from '../types/flow';
+import { FLOW_CONFIG, FLOW_GROUP_IDS, EQUIP_IDS, FLOW_INITIALS, EQUIP_INITIALS } from '../types/flow';
+
+// --------------------------- Types ---------------------------
+type DataTablePageEvent = { page: number; rows: number };
+
+type MemberSeverity = 'secondary' | 'success' | 'info' | 'warn' | 'danger' | 'contrast' | null;
+
+// --------------------------- Classes ---------------------------
+class ConnectGroupSet {
+    private _allConnectGroups: Array<Group> = [];
+    private _allConnectGroupLeaders: Array<GroupMember> = [];
+
+    public async reload() {
+        try {
+            this._allConnectGroups = (await churchtoolsClient.getAllPages<Array<Group>>('/groups', {
+                group_type_ids: [FLOW_CONFIG.CONNECT_GROUPTYPE_ID]
+            })).flat();
+            
+            this._allConnectGroupLeaders = (await Promise.all(
+                this._allConnectGroups.map(async g => {
+                    const connectgroupLeaders = (await churchtoolsClient.get<Array<GroupMember>>(`/groups/${g.id}/members`))
+                        .filter(m => m.groupTypeRoleId === FLOW_CONFIG.CONNECT_LEADERS_ROLE_ID);
+                    return connectgroupLeaders;
+                })
+            )).flat();
         }
-
-        public getLeaders(groupIds: Array<number>): Array<GroupMember> {
-            const leaders: Array<GroupMember> = [];
-            leaders.push(...this._allConnectGroupLeaders.filter(l => groupIds.includes(Number(l.group.domainIdentifier))));
-            return leaders;
-        }
-        
-        public get allConnectGroups(): Array<Group> {
-            return this._allConnectGroups;
-        }
-
-        public get allConnectGroupLeaders(): Array<GroupMember> {
-            return this._allConnectGroupLeaders;
+        catch (error) {
+            console.error('Error fetching connect groups or leaders:', error);
         }
     }
 
-    const MAX_ROWS = 10;
-    const tableDataSet = ref<Array<TableDataSet>>([]);
-    const connectGroupSetInstance = new ConnectGroupSet();
-    const totalRecords = ref(0);
-    const loading = ref(false);
-    const allMasterFlowSteps = inject<Array<Group>>('allMasterFlowSteps');
-    const allEquipSteps = inject<Array<SubFlowStep>>('allEquipSteps');
+    public getLeaders(groupIds: Array<number>): Array<GroupMember> {
+        const leaders: Array<GroupMember> = [];
+        leaders.push(...this._allConnectGroupLeaders.filter(l => groupIds.includes(Number(l.group.domainIdentifier))));
+        return leaders;
+    }
+    
+    public get allConnectGroups(): Array<Group> {
+        return this._allConnectGroups;
+    }
 
-    const personDialogVisible = ref(false);
-    const personPickerVisible = ref(false);
-    const selectedRow = ref<TableDataSet | null>(null);
-    const openPersonDialog = (row: TableDataSet) => {
-        selectedRow.value = row;
-        personDialogVisible.value = true;
+    public get allConnectGroupLeaders(): Array<GroupMember> {
+        return this._allConnectGroupLeaders;
+    }
+}
+
+// --------------------------- Props ---------------------------
+const props = defineProps<{
+    flowId: number | null
+}>();
+
+// --------------------------- State ---------------------------
+const MAX_ROWS = 10;
+const tableDataSet = ref<Array<TableDataSet>>([]);
+const connectGroupSetInstance = new ConnectGroupSet();
+const totalRecords = ref(0);
+const loading = ref(false);
+
+const personDialogVisible = ref(false);
+const personPickerVisible = ref(false);
+const selectedRow = ref<TableDataSet | null>(null);
+
+const serverSortField = ref<'name' | 'vorname' | 'joined'>('name');
+const serverSortOrder = ref<1 | -1>(1);
+
+const filters = ref({
+    flow: { value: props.flowId ?? FLOW_GROUP_IDS[0], matchMode: FilterMatchMode.EQUALS },
+});
+
+const filterText = ref<string | null>(null);
+
+// --------------------------- Computed ---------------------------
+const selectedFlowId = computed(() => filters.value.flow.value as number | null);
+
+// --------------------------- Injects ---------------------------
+const allMasterFlowSteps = inject<Array<Group>>('allMasterFlowSteps');
+const allEquipSteps = inject<Array<SubFlowStep>>('allEquipSteps');
+
+// --------------------------- Helpers ---------------------------
+const orderFields: Record<'name' | 'vorname' | 'joined', string> = {
+    name: 'person_lastName',
+    vorname: 'person_firstName',
+    joined: 'member_memberStartDate',
+};
+
+const orderDirections: Record<'1' | '-1', 'ASC' | 'DESC'> = {
+    '1': 'ASC',
+    '-1': 'DESC',
+};
+
+/**
+ * Gibt den vollständigen Namen eines Gruppenmitglieds zurück.
+ * 
+ * @param member - Das Gruppenmitglied
+ * @returns Formatierter Name als "Vorname Nachname" oder "Unbekannt"
+ */
+const fullName = (member: GroupMember): string => {
+    const firstName = member?.person?.domainAttributes?.firstName?.trim() ?? '';
+    const lastName = member?.person?.domainAttributes?.lastName?.trim() ?? '';
+    
+    const parts = [firstName, lastName].filter(Boolean);
+    
+    return parts.join(' ') || 'Unbekannt';
+};
+
+/**
+ * Findet die Gruppenmitgliedschaft einer Person in einer Connect-Gruppe anhand des Leaders.
+ * 
+ * @param connectLeader - Der Connect-Leader
+ * @param membersConnectGroups - Array der Connect-Gruppenmitgliedschaften der Person
+ * @returns Die gefundene Gruppenmitgliedschaft oder null
+ */
+const getGroupMemberByConnectLeader = (connectLeader: GroupMember, membersConnectGroups: Array<GroupMember>): GroupMember | null => {
+    return membersConnectGroups.find(m => m.group.domainIdentifier === connectLeader.group.domainIdentifier) || null;
+};
+
+/**
+ * Ermittelt die PrimeVue Severity-Stufe basierend auf dem Mitgliedschaftsstatus.
+ * 
+ * @param member - Die Gruppenmitgliedschaft
+ * @returns PrimeVue Severity-Wert oder null
+ */
+const getMemberSeverity = (member: GroupMember | null): MemberSeverity => {
+    const memberStatus = member?.groupMemberStatus;
+    if (!memberStatus) {
+        return null;
+    }
+    const statusMap: Record<MemberStatus, MemberSeverity> = {
+        active: 'success',
+        requested: 'warn',
+        to_delete: 'danger',
+        waiting: 'info'
     };
+    return statusMap[memberStatus];
+};
 
-    // Sort-Status der DataTable (Name/Vorname)
-    const serverSortField = ref<'name' | 'vorname' | 'joined'>('name');
-    const serverSortOrder = ref<1 | -1>(1);
-
-    // Mappe die UI-Felder auf API-Felder
-    const orderFields: Record<'name' | 'vorname' | 'joined', string> = {
-        name: 'person_lastName',
-        vorname: 'person_firstName',
-        joined: 'member_memberStartDate',
+/**
+ * Liefert den deutschen Anzeigetext für einen Mitgliedschaftsstatus.
+ * 
+ * @param member - Die Gruppenmitgliedschaft
+ * @returns Deutscher Statustext oder 'unknown'
+ */
+const getMembershipStatusText = (member: GroupMember | null): string => {
+    const statusMap: Record<MemberStatus, string> = {
+        active: 'Durch Connecter übernommen',
+        requested: 'An Connecter zugewiesen',
+        to_delete: 'Connect abgeschlossen',
+        waiting: 'Wartet'
     };
+    return member ? statusMap[member.groupMemberStatus] : 'unknown';
+}
 
-    const orderDirections: Record<'1' | '-1', 'ASC' | 'DESC'> = {
-        '1': 'ASC',
-        '-1': 'DESC',
-    };
+/**
+ * Erstellt die ChurchTools Personen-URL für das PersonView-Modul.
+ * 
+ * @param personId - DomainIdentifier der Person
+ * @returns Vollständige URL zum PersonView-Modul
+ */
+const getPersonUrl = (personId: string): string => {
+    return `https://eqrm.church.tools/?q=churchdb#PersonView/searchEntry:${personId}`;
+};
 
-    const props = defineProps<{
-        flowId: number | null
-    }>();
+/**
+ * Öffnet den Personendialog mit den Details der ausgewählten Person.
+ * 
+ * @param row - Datensatz der Person
+ */
+const openPersonDialog = (row: TableDataSet) => {
+    selectedRow.value = row;
+    personDialogVisible.value = true;
+};
 
-    const filters = ref({
-        flow: { value: props.flowId ?? FLOW_GROUP_IDS[0], matchMode: FilterMatchMode.EQUALS },
-    });
-
-    const filterText = ref<string | null>(null);
-
-    const selectedFlowId = computed(() => filters.value.flow.value as number | null);
-
-    const onServerSort = (event: any) => {
-        serverSortField.value = event.sortField;
-        serverSortOrder.value = event.sortOrder;
-    };
-
-
-    const onPersonPickerConfirm = (payload: { person: DomainObjectPerson & { displayName: string }, groups: Array<GroupMember> }) => {
-        if (!payload.person) return;
-        if (!payload.groups || payload.groups.length === 0) return;
-        if (!payload.groups[0].group.domainAttributes.groupTypeId) return;
-
-        filterText.value = payload.person.displayName;
-        filters.value.flow.value = Number(payload.groups[payload.groups.length - 1]?.group.domainIdentifier); 
-        fetchData({ page: 0, rows: MAX_ROWS });
-        personPickerVisible.value = false;
-    };
-
-
-    const fetchData = async (event: DataTablePageEvent) => {
+// --------------------------- API ---------------------------
+/**
+ * Lädt die Daten für die Tabelle von der ChurchTools-API.
+ * 
+ * - Lädt Gruppenmitglieder basierend auf Flow-Gruppen-ID
+ * - Berücksichtigt Sortierung, Filter und Pagination
+ * - Lädt für jedes Mitglied zusätzliche Gruppenzugehörigkeiten
+ * 
+ * @param event - Pagination-Event mit page und rows
+ */
+const fetchData = async (event: DataTablePageEvent) => {
         loading.value = true;
         try {            
             const sortField = orderFields[serverSortField.value] ?? 'person_lastName';
@@ -398,66 +481,44 @@
         }     
     };
 
-    watch([serverSortField, serverSortOrder, filters], async () => {
-        await fetchData({ page: 0, rows: MAX_ROWS });
-    });
+// --------------------------- Event Handlers ---------------------------
+/**
+ * Handler für Sortier-Events der DataTable.
+ * Aktualisiert die Server-Side-Sort-Parameter.
+ * 
+ * @param event - Sort-Event mit sortField und sortOrder
+ */
+const onServerSort = (event: any) => {
+    serverSortField.value = event.sortField;
+    serverSortOrder.value = event.sortOrder;
+};
 
-    onMounted(async () => {
-        await connectGroupSetInstance.reload();
-        await fetchData({page:0, rows: MAX_ROWS});
-    });
+/**
+ * Handler für die Bestätigung der erweiterten Personensuche.
+ * Setzt Filter und lädt die Daten neu.
+ * 
+ * @param payload - Payload mit ausgewählter Person und deren Gruppen
+ */
+const onPersonPickerConfirm = (payload: { person: DomainObjectPerson & { displayName: string }, groups: Array<GroupMember> }) => {
+    if (!payload.person) return;
+    if (!payload.groups || payload.groups.length === 0) return;
+    if (!payload.groups[0].group.domainAttributes.groupTypeId) return;
 
-    //  Helpers
-    const fullName = (member: GroupMember): string => {
-        const firstName = member?.person?.domainAttributes?.firstName?.trim() ?? '';
-        const lastName = member?.person?.domainAttributes?.lastName?.trim() ?? '';
-        
-        // Nur Teile hinzufügen, die nicht leer sind
-        const parts = [firstName, lastName].filter(Boolean);
-        
-        return parts.join(' ') || 'Unbekannt';
-    };
+    filterText.value = payload.person.displayName;
+    filters.value.flow.value = Number(payload.groups[payload.groups.length - 1]?.group.domainIdentifier); 
+    fetchData({ page: 0, rows: MAX_ROWS });
+    personPickerVisible.value = false;
+};
 
-    type MemberSeverity = 'secondary' | 'success' | 'info' | 'warn' | 'danger' | 'contrast' | null;
+// --------------------------- Watchers ---------------------------
+watch([serverSortField, serverSortOrder, filters], async () => {
+    await fetchData({ page: 0, rows: MAX_ROWS });
+});
 
-    const getGroupMemberByConnectLeader = (connectLeader: GroupMember, membersConnectGroups: Array<GroupMember>): GroupMember | null => {
-        return membersConnectGroups.find(m => m.group.domainIdentifier === connectLeader.group.domainIdentifier) || null;
-    };
-
-    const getMemberSeverity = (member: GroupMember | null): MemberSeverity => {
-        const memberStatus = member?.groupMemberStatus;
-        if (!memberStatus) {
-            return null;
-        }
-        const statusMap: Record<MemberStatus, MemberSeverity> = {
-            active: 'success',
-            requested: 'warn',
-            to_delete: 'danger',
-            waiting: 'info'
-        };
-    return statusMap[memberStatus];
-    };
-
-    const getMembershipStatusText = (member: GroupMember | null): string => {
-        const statusMap: Record<MemberStatus, string> = {
-            active: 'Durch Connecter übernommen',
-            requested: 'An Connecter zugewiesen',
-            to_delete: 'Connect abgeschlossen',
-            waiting: 'Wartet'
-        };
-        return member ? statusMap[member.groupMemberStatus] : 'unknown';
-    }
-
-
-
-    /**
-     * Erstellt die ChurchTools Personen-URL für das PersonView-Modul.
-     * 
-     * @param personId - DomainIdentifier der Person
-     * @returns Vollständige URL zum PersonView-Modul mit searchEntry-Parameter
-     */
-    const getPersonUrl = (personId: string): string => {
-        return `https://eqrm.church.tools/?q=churchdb#PersonView/searchEntry:${personId}`;
-    };
+// --------------------------- Lifecycle ---------------------------
+onMounted(async () => {
+    await connectGroupSetInstance.reload();
+    await fetchData({page:0, rows: MAX_ROWS});
+});
 
 </script>

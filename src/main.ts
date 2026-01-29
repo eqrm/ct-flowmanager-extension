@@ -1,6 +1,6 @@
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import type { PersonMasterData, Group, GroupMember, Person, GroupHierarchy } from './utils/ct-types';
-import { FLOW_GROUP_IDS, EQUIP_IDS, FLOW_CONFIG, type SubFlowStep } from './types/flow';
+import { FLOW_GROUP_IDS, EQUIP_IDS, FLOW_CONFIG, type SubFlowStep, EQUIP_EVENT_IDS } from './types/flow';
 import { createApp, ref } from 'vue';
 import App from './Vues/App.vue';
 import PrimeVue from 'primevue/config';

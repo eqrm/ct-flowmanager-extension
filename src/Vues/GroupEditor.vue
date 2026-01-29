@@ -111,7 +111,7 @@ import Select from 'primevue/select';
 // Types — Person entfernt, nur GroupMember bleibt
 import type { GroupMember, MembershipNew, Group } from '../utils/ct-types';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
-import { FLOW_CONFIG } from '../types/flow';
+import { FLOW_CONFIG, EQUIP_EVENT_IDS } from '../types/flow';
 
 // --------------------------- Props ---------------------------
 const props = defineProps<{
@@ -210,6 +210,17 @@ async function removeMemberFromGroupApi(groupId: string, personId: string) {
     return churchtoolsClient.deleteApi(`/groups/${groupId}/members/${personId}`);
 }
 
+async function equipEventMembersApi() : Promise<Array<GroupMember>> {
+    const equipEventMembers = await Promise.all(
+        EQUIP_EVENT_IDS.map(async (eventId) => {
+            const members = await churchtoolsClient.getAllPages<Array<GroupMember>>(`/groups/${eventId}/members`)
+                .then(results => results.flat());
+            return members;
+        })
+    ).then(arrays => arrays.flat());
+    return equipEventMembers || [];
+}
+
 // --------------------------- Event-Handler ---------------------------
 
 function onCandidateSelected() {
@@ -251,8 +262,5 @@ function whoamiName() {
     return whoami ? fullName(whoami) : 'Unbekannt';
 }
 
-/**
- * Unterstützt:
- * - GroupMember (hat .person mit .domainAttributes oder direkten Feldern)
- */
+
 </script>

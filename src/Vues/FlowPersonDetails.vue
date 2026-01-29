@@ -295,9 +295,7 @@ import type { Person, Group, GroupMember, PersonMasterData } from '../utils/ct-t
 import type { MenuItem } from 'primevue/menuitem';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 
-// =============================================================================
-// PROPS & EMITS
-// =============================================================================
+// ------------------ PROPS -------------------------------------
 
 const props = defineProps<{
     data: TableDataSet;
@@ -305,36 +303,25 @@ const props = defineProps<{
     visible: boolean;
 }>();
 
+//  ------------------ EMITS ------------------------------------
 const emit = defineEmits<{
     (e: 'update:visible', value: boolean): void;
 }>();
 
-// =============================================================================
-// DEPENDENCY INJECTION
-// =============================================================================
-
+//  ------------------ INJECTIONS -------------------------------------
 const allEquipSteps = inject<Array<Group>>('allEquipSteps', []);
 const allMasterFlowSteps = inject<Array<Group>>('allMasterFlowSteps', []);
 const allConnectGroupLeaders = inject<Array<GroupMember>>('allConnectGroupLeaders', []);
 const allSubFlows = inject<Array<SubFlowStep>>('allSubFlows', []);
 const masterData = inject<PersonMasterData | null>('masterData', null);
 
-// =============================================================================
-// REACTIVE STATE
-// =============================================================================
-
+//  ------------------ REFS -------------------------------------
 const activeSection = ref('connect');
-const timelineRef = ref<InstanceType<typeof PersonTimeline>>();
-
-// --- Taufe: nachgeladene Personendaten ---
 const taufePerson = ref<Person | null>(null);
 const taufeLoading = ref(false);
 const taufeError = ref<string | null>(null);
 
-// =============================================================================
-// COMPUTED PROPERTIES
-// =============================================================================
-
+//  ------------------ COMPUTED PROPERTIES -------------------------------------
 const visible = computed({
     get: () => props.visible,
     set: (v: boolean) => emit('update:visible', v),
@@ -372,9 +359,7 @@ const taufeSubFlowParent = computed(() =>
     allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_TAUFE)
 );
 
-// =============================================================================
-// MENU CONFIGURATION
-// =============================================================================
+//  ------------------ MENU CONFIGURATION -------------------------------------
 
 const menuItems = ref<MenuItem[]>([
     {
@@ -432,21 +417,65 @@ const menuItems = ref<MenuItem[]>([
 ]);
 
 
-// =============================================================================
-// EVENT HANDLERS
-// =============================================================================
+//  ------------------ EVENT HANDLERS -------------------------------------
 
+/**
+ * Event-Handler, der beim Öffnen des Dialogs ausgeführt wird.
+ * 
+ * Wird vom @show-Event des Dialog-Komponenten getriggert und führt
+ * folgende Initialisierungen durch:
+ * - Setzt die aktive Sektion auf 'connect' zurück
+ * - Loggt die ID der aktuell angezeigten Person
+ * 
+ * Dadurch wird sichergestellt, dass der Dialog immer mit der
+ * Connect-Sektion startet, unabhängig davon, welche Sektion
+ * beim letzten Schließen aktiv war.
+ * 
+ * @returns void
+ */
 function handleDialogShow(): void {
     console.log('Dialog geöffnet für Person:', personId.value);
     activeSection.value = 'connect';
 }
 
+/**
+ * Event-Handler für das Hinzufügen eines Connect-Leiters.
+ * 
+ * Wird vom GroupMemberEditor-Komponenten ausgelöst, wenn ein neuer
+ * Connector zu einer Person zugewiesen wird. Aktualisiert die lokalen
+ * Daten-Arrays, um die neue Beziehung widerzuspiegeln.
+ * 
+ * Hinweis: Diese Funktion aktualisiert nur die lokalen UI-Daten. Die
+ * tatsächliche Persistierung in ChurchTools erfolgt im GroupMemberEditor.
+ * 
+ * @param groupLeader - Der neu hinzugefügte Connector als GroupMember
+ * @param groupMember - Die Beziehung zwischen Person und Connector-Gruppe
+ * @returns void
+ */
 function onConnectLeaderAdded(groupLeader: GroupMember, groupMember: GroupMember): void {
     console.log('GroupMember hinzugefügt.', 'Leader:', groupLeader, 'Member:', groupMember);
     props.data.connectLeaders.push(groupLeader);
     props.data.connect.push(groupMember);
 }
 
+/**
+ * Event-Handler für das Entfernen eines Connect-Leiters.
+ * 
+ * Wird vom GroupMemberEditor-Komponenten ausgelöst, wenn ein Connector
+ * von einer Person entfernt wird. Entfernt die entsprechenden Einträge
+ * aus den lokalen Daten-Arrays durch Filterung nach Domain-Identifiern.
+ * 
+ * Die Filterung erfolgt anhand von:
+ * - connectLeaders: Personenidentifikator des Connectors
+ * - connect: Kombination aus Gruppenidentifikator und Personenidentifikator
+ * 
+ * Hinweis: Diese Funktion aktualisiert nur die lokalen UI-Daten. Die
+ * tatsächliche Löschung in ChurchTools erfolgt im GroupMemberEditor.
+ * 
+ * @param groupLeader - Der zu entfernende Connector als GroupMember
+ * @param groupMember - Die zu entfernende Beziehung zwischen Person und Connector-Gruppe
+ * @returns void
+ */
 function onConnectLeaderRemoved(groupLeader: GroupMember, groupMember: GroupMember): void {
     console.log('GroupMember entfernt.', 'Leader:', groupLeader, 'Member:', groupMember);
     props.data.connectLeaders = props.data.connectLeaders.filter(
@@ -458,11 +487,40 @@ function onConnectLeaderRemoved(groupLeader: GroupMember, groupMember: GroupMemb
     );
 }
 
+/**
+ * Event-Handler für das Hinzufügen eines Master-Flow-Tags.
+ * 
+ * Wird vom GroupEditor-Komponenten ausgelöst, wenn ein Flow-Tag
+ * (z.B. "Neu", "Aktiv", "Gast") zu einer Person hinzugefügt wird.
+ * Fügt das neue Tag dem lokalen flow-Array hinzu.
+ * 
+ * Tags sind Gruppen-Mitgliedschaften, die den Flow-Status einer
+ * Person im ChurchTools-System repräsentieren.
+ * 
+ * Hinweis: Diese Funktion aktualisiert nur die lokalen UI-Daten. Die
+ * tatsächliche Persistierung in ChurchTools erfolgt im GroupEditor.
+ * 
+ * @param member - Das neu hinzugefügte Flow-Tag als GroupMember
+ * @returns void
+ */
 function onMasterFlowAdded(member: GroupMember): void {
     console.log('Master Flow hinzugefügt:', member);
     props.data.flow.push(member);
 }
 
+/**
+ * Event-Handler für das Entfernen eines Master-Flow-Tags.
+ * 
+ * Wird vom GroupEditor-Komponenten ausgelöst, wenn ein Flow-Tag
+ * von einer Person entfernt wird. Entfernt das Tag aus dem lokalen
+ * flow-Array durch Filterung nach dem Gruppen-Identifikator.
+ * 
+ * Hinweis: Diese Funktion aktualisiert nur die lokalen UI-Daten. Die
+ * tatsächliche Löschung in ChurchTools erfolgt im GroupEditor.
+ * 
+ * @param member - Das zu entfernende Flow-Tag als GroupMember
+ * @returns void
+ */
 function onMasterFlowRemoved(member: GroupMember): void {
     console.log('Master Flow entfernt:', member);
     props.data.flow = props.data.flow.filter(
@@ -472,10 +530,7 @@ function onMasterFlowRemoved(member: GroupMember): void {
 
 
 
-// =============================================================================
-// UTILITY FUNCTIONS
-// =============================================================================
-
+//  ------------------ UTILITY FUNCTIONS -------------------------------------
 
 /**
  * Gibt den Namen einer Rolle anhand ihrer ID zurück.

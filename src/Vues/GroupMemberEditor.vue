@@ -382,5 +382,4 @@ const getMembershipStatusText = (member: GroupMember | null): string => {
 }
 
 
-
 </script>
