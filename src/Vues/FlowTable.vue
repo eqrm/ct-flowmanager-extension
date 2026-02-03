@@ -207,7 +207,6 @@
     import type { 
         Group, 
         DomainObjectPerson,
-        PersonMasterData,
         PersonSetting,
         Person,
         GroupMember, 
@@ -217,7 +216,6 @@
         PageResponse, 
         Params } from '@churchtools/churchtools-client/dist/churchtoolsClient';
     import { 
-        activateLogging,
         churchtoolsClient } from '@churchtools/churchtools-client';
     import type { 
         SubFlowStep, 
@@ -377,7 +375,6 @@
             if (stationId) {
                 params.person_campusId = stationId;
             }
-            console.log('Fetching members with params:', params);
             const response = await churchtoolsClient.get<PageResponse<Array<GroupMember>>>(
                 `/groups/${flowGroupId}/members`, 
                 params,
