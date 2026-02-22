@@ -1,6 +1,6 @@
 <template class="p-fluid">
     <div class="flex flex-column gap-4 p-4">
-        <Fieldset legend="Tag wählen">
+        <Fieldset legend="Filter">
             <div class="flex gap-2">
                 <FloatLabel variant="on">
                     <InputText 
@@ -52,7 +52,7 @@
                 </Button>
             </div>
         </Fieldset>
-        <Fieldset legend="Mitglieder im Flow" class="mt-2">        
+        <Fieldset legend="Personen" class="mt-2">        
             <DataTable 
                 :value="tableDataSet" 
                 :paginator="true"
@@ -116,15 +116,16 @@
                                 <OverlayBadge 
                                     :severity="getMemberSeverity(getGroupMemberByConnectLeader(leader, slotProps.data.connect))" 
                                     class="mr-2">
-                                <Avatar 
-                                    :label="leader.person.initials" 
-                                    v-tooltip.bottom="fullName(leader) + ` (${getMembershipStatusText(getGroupMemberByConnectLeader(leader, slotProps.data.connect))})`"/>
+                                    <Avatar 
+                                        :label="leader.person.initials" 
+                                        v-tooltip.bottom="fullName(leader) + ` (${getMembershipStatusText(getGroupMemberByConnectLeader(leader, slotProps.data.connect))})`"/>
                                 </OverlayBadge>
                             </div>
                         </div>
                     </template>
                 </Column>
                 
+                <!-- Equip -->
                 <Column 
                     field="equip" 
                     header="Equip" 
@@ -132,8 +133,8 @@
                     <template #body="slotProps">
                         <AvatarDataColumn
                             :data="slotProps.data"
-                            :master-data="allEquipSteps"
-                            :level-mapping="EQUIP_INITIALS"
+                            :master-data="visibleEquipGroups"
+                            :level-mapping="equipInitialsMapping"
                             data-property="equip"
                         />
                     </template>
@@ -218,14 +219,14 @@
     import { 
         churchtoolsClient } from '@churchtools/churchtools-client';
     import type { 
-        SubFlowStep, 
-        TableDataSet } from '../types/flow';
+        TableDataSet
+     } from '../types/flow';
     import { 
         FLOW_CONFIG, 
         FLOW_GROUP_IDS, 
-        EQUIP_IDS, 
+        EQUIP_STEP_CONFIG,
         FLOW_INITIALS, 
-        EQUIP_INITIALS } from '../types/flow';
+    } from '../types/flow';
     import { 
         FilterMatchMode } from '@primevue/core/api';
     import { 
@@ -294,8 +295,8 @@
     const connectGroupSetInstance = new ConnectGroupSet();
     const totalRecords = ref(0);
     const loading = ref(false);
-    const allMasterFlowSteps = inject<Array<Group>>('allMasterFlowSteps');
-    const allEquipSteps = inject<Array<SubFlowStep>>('allEquipSteps');
+    const allMasterFlowSteps = inject<Array<Group>>('allMasterFlowSteps', []);
+    const allEquipGroups = inject<Array<Group>>('allEquipGroups', []);
     const whoami = inject<Person>('whoami');
 
     const personDialogVisible = ref(false);
@@ -331,6 +332,21 @@
     });
 
     const filterText = ref<string | null>(null);
+
+    const equipIds = EQUIP_STEP_CONFIG.steps
+        .map(step => step.equipId)
+        .filter((id): id is number => typeof id === 'number');
+
+    const equipInitialsMapping: Record<number, string> = EQUIP_STEP_CONFIG.steps.reduce((mapping, step) => {
+        if (typeof step.equipId === 'number') {
+            mapping[step.equipId] = step.initials;
+        }
+        return mapping;
+    }, {} as Record<number, string>);
+
+    const visibleEquipGroups = computed<Array<Group>>(() => {
+        return allEquipGroups.filter(group => equipIds.includes(group.id));
+    });
 
     const selectedFlowId = computed(() => filters.value.flow.value as number | null);
 
@@ -401,13 +417,14 @@
                     });
                     const equipGroups = personsGroups.filter(g => {
                         const isEquipType = g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_MERKMAL;
-                        const isEquipGroup = EQUIP_IDS.includes(Number(g.group.domainIdentifier) as any);                    
+                        const isEquipGroup = equipIds.includes(Number(g.group.domainIdentifier));                    
                         return isEquipType && isEquipGroup;
                     });
                     const connectGroups = personsGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.CONNECT_GROUPTYPE_ID);
                     const flowGroupJoins = flowGroups.map(g => g.memberStartDate ? new Date(g.memberStartDate) : null);
                     const groups = personsGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_GROUP);
                     const teams = personsGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_TEAM);
+                    const events = personsGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_EVENT);
                     return {
                         person: groupMember,
                         flow: flowGroups,
@@ -419,6 +436,7 @@
                         equip: equipGroups,
                         groups: groups,
                         teams: teams,
+                        events: events
                     };
                 })
             );

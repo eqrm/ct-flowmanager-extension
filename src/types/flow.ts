@@ -10,6 +10,7 @@ export type TableDataSet = {
     equip: Array<GroupMember>;
     teams: Array<GroupMember>;
     groups: Array<GroupMember>;
+    events: Array<GroupMember>;
 };
 
 export type SubFlowStep = Group & {
@@ -27,6 +28,7 @@ export const FLOW_CONFIG = {
     GROUP_TYPE_ID_MERKMAL: 4,
     GROUP_TYPE_ID_GROUP: 1,
     GROUP_TYPE_ID_TEAM: 2,
+    GROUP_TYPE_ID_EVENT: 7,
     GROUP_STATUS_ACTIVE: 1,
     GROUP_STATUS_PENDING: 2,
     GROUP_STATUS_ARCHIVED: 3,
@@ -73,21 +75,92 @@ export const FLOW_INITIALS: Record<number, '!0' | '!1' | '!2' | '!3' | '!4' | '!
     1046: '!6'
 } as const;
 
-// Equip Group IDs (Equip 1-4)
-export const EQUIP_IDS = [1249, 1252, 1255, 1258] as const;
+export type FlowStepDefinition = {
+    id: number;
+    name: string;
+    initials: string;
+    flowId: number;
+    equipId?: number;
+    eventId?: number;
+};
 
-// Equip ID to Level mapping
-export const EQUIP_INITIALS: Record<EquipId, '1' | '2' | '3' | '4'> = {
-    1249: '1',
-    1252: '2', 
-    1255: '3',
-    1258: '4'
-} as const;
+export type FlowStepConfig = {
+    flowId: number;
+    steps: readonly FlowStepDefinition[];
+};
+
+export const EQUIP_STEP_CONFIG: FlowStepConfig = {
+    flowId: FLOW_CONFIG.FLOW_ID_EQUIP,
+    steps: [
+        {
+            id: 0,
+            name: 'Equip Potential',
+            initials: 'P',
+            flowId: 1698,
+        },
+        {
+            id: 1,
+            name: 'Equip 1',
+            initials: '1',
+            flowId: 1701,
+            equipId: 1249,
+            eventId: 2286,
+        },
+        {
+            id: 2,
+            name: 'Equip 2',
+            initials: '2',
+            flowId: 1704,
+            equipId: 1252,
+            eventId: 2289,
+        },
+        {
+            id: 3,
+            name: 'Equip 3',
+            initials: '3',
+            flowId: 1707,
+            equipId: 1255,
+            eventId: 2292,
+        },
+        {
+            id: 4,
+            name: 'Equip 4',
+            initials: '4',
+            flowId: 1710,
+            equipId: 1258,
+            eventId: 2423,
+        },
+        {
+            id: 5,
+            name: 'Equip Review',
+            initials: 'R',
+            flowId: 1713,
+        },
+    ],
+};
+
+
 
 // Type guards for better type safety
 export type FlowGroupId = typeof FLOW_GROUP_IDS[number];
-export type EquipId = typeof EQUIP_IDS[number];
+export type EquipId = NonNullable<(typeof EQUIP_STEP_CONFIG.steps)[number]['equipId']>;
+export type EquipEventId = NonNullable<(typeof EQUIP_STEP_CONFIG.steps)[number]['eventId']>;
+export type EquipFlowGroupId = (typeof EQUIP_STEP_CONFIG.steps)[number]['flowId'];
 
+
+export type EquipFlowStepStatus = "Potential" | "Angemeldet" | "Absolviert";
+
+export type EquipFlowStepStatusData = {
+    status: EquipFlowStepStatus;
+    datum?: Date;
+    info?: string;
+};
+
+export type EquipFlowStep = {
+    id: EquipId;
+    name: string;
+    status: Array<EquipFlowStepStatusData>;
+};
 
 /**
  * Generiert eine vollständige URL zum Starten eines Flows in der EQRM-App.

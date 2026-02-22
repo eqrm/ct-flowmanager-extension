@@ -1,6 +1,9 @@
 <template>
     <Fieldset :legend="legend">
-        <div class="flex justify-content-between align-items-start gap-3 mt-2">
+        <div v-if="filteredMembers.length === 0" class="text-center text-sm text-gray-500">
+            Keine Informationen.
+        </div>
+        <div v-else class="flex justify-content-between align-items-start gap-3 mt-2">
             <DataTable
                 :value="filteredMembers"
                 size="large"

@@ -1,6 +1,6 @@
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import type { PersonMasterData, Group, GroupMember, Person, GroupHierarchy } from './utils/ct-types';
-import { FLOW_GROUP_IDS, EQUIP_IDS, FLOW_CONFIG, type SubFlowStep } from './types/flow';
+import { FLOW_GROUP_IDS, EQUIP_STEP_CONFIG, FLOW_CONFIG, type SubFlowStep } from './types/flow';
 import { createApp, ref } from 'vue';
 import App from './Vues/App.vue';
 import PrimeVue from 'primevue/config';
@@ -96,11 +96,16 @@ try {
     //  Equip-Gruppen laden
     //  --------------------------------------------------------------------------
     console.log('Loading equip groups...');
-    const allEquipSteps = ref<Array<Group> | null>(null)
-    allEquipSteps.value = await churchtoolsClient.getAllPages<Array<Group>>('/groups', { 
-        ids: EQUIP_IDS, 
+    const equipIds = Array.from(new Set(
+        EQUIP_STEP_CONFIG.steps.flatMap(step => [step.equipId, step.flowId, step.eventId])
+            .filter((id): id is number => typeof id === 'number')
+    ));
+    const allEquipGroups = ref<Array<Group> | null>(null)
+    allEquipGroups.value = await churchtoolsClient.getAllPages<Array<Group>>('/groups', { 
+        ids: equipIds, 
         include: ['tags'] })
         .then(results => results.flat());
+        
 
     //  --------------------------------------------------------------------------
     //  Connect-Gruppen laden (für Connector-Auswahl)
@@ -137,7 +142,7 @@ try {
     app.provide('allMasterFlowSteps', allMasterFlowSteps.value);
     app.provide('allSubFlowSteps', allSubFlowSteps.value);
     app.provide('allSubFlows', allSubFlows.value);
-    app.provide('allEquipSteps', allEquipSteps.value);
+    app.provide('allEquipGroups', allEquipGroups.value);
     app.provide('allConnectGroupLeaders', allConnectGroupLeaders.value);
     app.provide('whoami', whoami.value);
     app.directive('tooltip', Tooltip);

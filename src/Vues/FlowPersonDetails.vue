@@ -68,30 +68,20 @@
         
         <!-- Equip Status -->
         <div v-show="activeSection === 'equip'">
-            <Fieldset legend="Equip Status">
-                <div class="flex justify-content-between align-items-start gap-3 mt-2">
-                    <AvatarDataColumn
-                        :data="data"
-                        :master-data="allEquipSteps"
-                        :level-mapping="EQUIP_INITIALS"
-                        data-property="equip"
-                    />
-                    <Button 
-                        icon="pi pi-sitemap" 
-                        :href="getAppLinkForFlow('equip')" 
-                        as="a"
-                        target="_blank"
-                        rounded
-                        outlined
-                        v-tooltip.bottom="'Equip Flow in neuem Tab öffnen'"
-                    />
-                </div>
+            <Fieldset legend="Steps">
+                <EquipDataView :flow-steps="equipFlowSteps"/>
             </Fieldset>
-            <SubFlowStepTable
-                legend="Nächster Schritt"
-                :members="props.data.subFlows"
-                :sub-flow-parent="equipSubFlowParent"
-            />
+            <Fieldset legend="Aktionen">
+                <FlowController
+                    :load-actions="() => [
+                        {
+                            action: () => appOpenEquipFlow(),
+                            label: 'Equip Flow öffnen',
+                            icon: 'pi pi-play'
+                        },                        
+                    ]"
+                />
+            </Fieldset>
         </div>
 
         <!-- Taufe -->
@@ -125,51 +115,56 @@
                 tooltip-text="Teams Flow in neuem Tab öffnen"
             />
             <Fieldset legend="Team-Zugehörigkeit">
-                <DataTable
-                    :value="data.teams"
-                    size="large"
-                    responsiveLayout="scroll"
-                    :pt="{ table: { style: 'min-width: 30rem' } }">
-                    <Column width="3rem;">
-                        <template #body="{ data: row }">
-                            <Avatar 
-                                :image="row.group.imageUrl || undefined"
-                                :icon="row.group.imageUrl ? undefined : 'pi pi-users'"
-                                size="small"
-                                shape="circle"
-                            />
-                        </template>
-                    </Column>
-                    <Column header="Team">
-                        <template #body="{ data: row }">
-                            {{ row?.group?.title ?? '–' }}
-                        </template>
-                    </Column>
-                    <Column header="Rolle">
-                        <template #body="{ data: row }">
-                            {{ getRoleString(row?.groupTypeRoleId)   }}
-                        </template>
-                    </Column>
-                    <Column header="Beigetreten am">
-                        <template #body="{ data: row }">
-                            {{ formatDate(row?.memberStartDate) }}
-                        </template>
-                    </Column>
-                    <Column style="width: 3rem;">
-                        <template #body="{ data: row }">
-                            <Button
-                                icon="pi pi-external-link"
-                                size="small"
-                                target="_blank"
-                                rounded
-                                outlined
-                                as="a"
-                                :href="`${row?.group?.frontendUrl}`"
-                                v-tooltip.left="`${row?.group?.title ?? '-'} im Gruppenmodul öffnen`"
-                            />
-                        </template>
-                    </Column>
-                </DataTable>
+                <div v-if="data.teams.length === 0" class="text-center text-sm text-gray-500">
+                    Keine Teamzugehörigkeit.
+                </div>
+                <div v-else>
+                    <DataTable
+                        :value="data.teams"
+                        size="large"
+                        responsiveLayout="scroll"
+                        :pt="{ table: { style: 'min-width: 30rem' } }">
+                        <Column width="3rem;">
+                            <template #body="{ data: row }">
+                                <Avatar 
+                                    :image="row.group.imageUrl || undefined"
+                                    :icon="row.group.imageUrl ? undefined : 'pi pi-users'"
+                                    size="small"
+                                    shape="circle"
+                                />
+                            </template>
+                        </Column>
+                        <Column header="Team">
+                            <template #body="{ data: row }">
+                                {{ row?.group?.title ?? '–' }}
+                            </template>
+                        </Column>
+                        <Column header="Rolle">
+                            <template #body="{ data: row }">
+                                {{ getRoleString(row?.groupTypeRoleId)   }}
+                            </template>
+                        </Column>
+                        <Column header="Beigetreten am">
+                            <template #body="{ data: row }">
+                                {{ formatDate(row?.memberStartDate) }}
+                            </template>
+                        </Column>
+                        <Column style="width: 3rem;">
+                            <template #body="{ data: row }">
+                                <Button
+                                    icon="pi pi-external-link"
+                                    size="small"
+                                    target="_blank"
+                                    rounded
+                                    outlined
+                                    as="a"
+                                    :href="`${row?.group?.frontendUrl}`"
+                                    v-tooltip.left="`${row?.group?.title ?? '-'} im Gruppenmodul öffnen`"
+                                />
+                            </template>
+                        </Column>
+                    </DataTable>
+                </div>
             </Fieldset>
         </div>
 
@@ -183,66 +178,71 @@
                 tooltip-text="Gruppen Flow in neuem Tab öffnen"
             />
             <Fieldset legend="Group-Zugehörigkeit">
-                <DataTable
-                    :value="data.groups"
-                    size="large"
-                    responsiveLayout="scroll"
-                    :pt="{ table: { style: 'min-width: 30rem' } }">
-                    <Column width="3rem;">
-                        <template #body="{ data: row }">
-                            <Avatar 
-                                :image="row.group.imageUrl || undefined"
-                                :icon="row.group.imageUrl ? undefined : 'pi pi-users'"
-                                size="small"
-                                shape="circle"
-                            />
-                        </template>
-                    </Column>
-                    <Column header="Group">
-                        <template #body="{ data: row }">
-                            <template v-if="row?.group">
-                                <div class="flex align-items-center gap-2">
-                                    <Tag 
-                                        v-bind="(() => {
-                                            const status = getGroupStatusConfig(row.group.domainAttributes.groupStatusId);
-                                            return { 
-                                                severity: status.severity, 
-                                                icon: status.icon, 
-                                                value: status.label 
-                                            };
-                                        })()"
-                                        rounded
-                                    />
-                                    <span>{{ row.group.title ?? '–' }}</span>
-                                </div>
+                <div v-if="data.groups.length === 0" class="text-center text-sm text-gray-500">
+                    Keine Groups.
+                </div>
+                <div v-else>
+                    <DataTable
+                        :value="data.groups"
+                        size="large"
+                        responsiveLayout="scroll"
+                        :pt="{ table: { style: 'min-width: 30rem' } }">
+                        <Column width="3rem;">
+                            <template #body="{ data: row }">
+                                <Avatar 
+                                    :image="row.group.imageUrl || undefined"
+                                    :icon="row.group.imageUrl ? undefined : 'pi pi-users'"
+                                    size="small"
+                                    shape="circle"
+                                />
                             </template>
-                        </template>
-                    </Column>
-                    <Column header="Rolle">
-                        <template #body="{ data: row }">
-                            {{ getRoleString(row?.groupTypeRoleId)   }}
-                        </template>
-                    </Column>
-                    <Column header="Beigetreten am">
-                        <template #body="{ data: row }">
-                            {{ formatDate(row?.memberStartDate) }}
-                        </template>
-                    </Column>
-                    <Column style="width: 3rem;">
-                        <template #body="{ data: row }">
-                            <Button
-                                icon="pi pi-external-link"
-                                size="small"
-                                target="_blank"
-                                rounded
-                                outlined
-                                as="a"
-                                :href="`${row?.group?.frontendUrl}`"
-                                v-tooltip.left="`${row?.group?.title ?? '-'} im Gruppenmodul öffnen`"
-                            />
-                        </template>
-                    </Column>
-                </DataTable>
+                        </Column>
+                        <Column header="Group">
+                            <template #body="{ data: row }">
+                                <template v-if="row?.group">
+                                    <div class="flex align-items-center gap-2">
+                                        <Tag 
+                                            v-bind="(() => {
+                                                const status = getGroupStatusConfig(row.group.domainAttributes.groupStatusId);
+                                                return { 
+                                                    severity: status.severity, 
+                                                    icon: status.icon, 
+                                                    value: status.label 
+                                                };
+                                            })()"
+                                            rounded
+                                        />
+                                        <span>{{ row.group.title ?? '–' }}</span>
+                                    </div>
+                                </template>
+                            </template>
+                        </Column>
+                        <Column header="Rolle">
+                            <template #body="{ data: row }">
+                                {{ getRoleString(row?.groupTypeRoleId)   }}
+                            </template>
+                        </Column>
+                        <Column header="Beigetreten am">
+                            <template #body="{ data: row }">
+                                {{ formatDate(row?.memberStartDate) }}
+                            </template>
+                        </Column>
+                        <Column style="width: 3rem;">
+                            <template #body="{ data: row }">
+                                <Button
+                                    icon="pi pi-external-link"
+                                    size="small"
+                                    target="_blank"
+                                    rounded
+                                    outlined
+                                    as="a"
+                                    :href="`${row?.group?.frontendUrl}`"
+                                    v-tooltip.left="`${row?.group?.title ?? '-'} im Gruppenmodul öffnen`"
+                                />
+                            </template>
+                        </Column>
+                    </DataTable>
+                </div>
             </Fieldset>
         </div>
 
@@ -283,17 +283,34 @@ import MenuBar from 'primevue/menubar';
 import Tag from 'primevue/tag';
 
 // Local Components
-import AvatarDataColumn from './AvatarDataColumn.vue';
 import PersonTimeline from './PersonTimeline.vue';
 import GroupMemberEditor from './GroupMemberEditor.vue';
 import GroupEditor from './GroupEditor.vue';
 import SubFlowStepTable from './SubFlowStepTable.vue';
+import EquipDataView from './EquipDataView.vue';
+import FlowController from './FlowController.vue';
 
 // Types and Utils
-import { EQUIP_INITIALS, FLOW_CONFIG, getAppLinkForFlow, type TableDataSet, type SubFlowStep } from '../types/flow';
-import type { Person, Group, GroupMember, PersonMasterData } from '../utils/ct-types';
-import type { MenuItem } from 'primevue/menuitem';
-import { churchtoolsClient } from '@churchtools/churchtools-client';
+import {  
+    FLOW_CONFIG,
+    EQUIP_STEP_CONFIG,
+    getAppLinkForFlow, 
+    type EquipFlowStep,
+    type TableDataSet, 
+    type SubFlowStep
+} from '../types/flow';
+import type { 
+    Person, 
+    Group, 
+    GroupMember, 
+    PersonMasterData 
+} from '../utils/ct-types';
+import type { 
+    MenuItem 
+} from 'primevue/menuitem';
+import { 
+    churchtoolsClient 
+} from '@churchtools/churchtools-client';
 
 // =============================================================================
 // PROPS & EMITS
@@ -313,7 +330,6 @@ const emit = defineEmits<{
 // DEPENDENCY INJECTION
 // =============================================================================
 
-const allEquipSteps = inject<Array<Group>>('allEquipSteps', []);
 const allMasterFlowSteps = inject<Array<Group>>('allMasterFlowSteps', []);
 const allConnectGroupLeaders = inject<Array<GroupMember>>('allConnectGroupLeaders', []);
 const allSubFlows = inject<Array<SubFlowStep>>('allSubFlows', []);
@@ -324,7 +340,7 @@ const masterData = inject<PersonMasterData | null>('masterData', null);
 // =============================================================================
 
 const activeSection = ref('connect');
-const timelineRef = ref<InstanceType<typeof PersonTimeline>>();
+const equipFlowStatus = ref<Array<EquipFlowStep>>([]);
 
 // --- Taufe: nachgeladene Personendaten ---
 const taufePerson = ref<Person | null>(null);
@@ -352,10 +368,6 @@ const ctPersonLink = computed(() =>
     props.data?.person?.person?.frontendUrl || '#'
 );
 
-const equipSubFlowParent = computed(() => 
-    allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_EQUIP)
-);
-
 const teamsSubFlowParent = computed(() => 
     allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_TEAMS)
 );
@@ -371,6 +383,8 @@ const offboardingSubFlowParent = computed(() =>
 const taufeSubFlowParent = computed(() => 
     allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_TAUFE)
 );
+
+const equipFlowSteps = computed<Array<EquipFlowStep>>(() => equipFlowStatus.value);
 
 // =============================================================================
 // MENU CONFIGURATION
@@ -610,8 +624,63 @@ async function loadTaufePerson(): Promise<void> {
     }
 }
 
+/**
+ * Öffnet den Equip Flow in einem neuen Tab.
+ * Verwendet die getAppLinkForFlow Utility, um die URL zu generieren.
+ */
+function appOpenEquipFlow(): void {
+    const url = getAppLinkForFlow('equip');
+    window.open(url, '_blank');
+}
+
+/**
+ * Befüllt den lokalen Equip-Status-Container aus den Personendaten.
+ */
+function populateEquipFlowStatusFromData(): void {
+    equipFlowStatus.value = [];
+    for (const stepConfig of EQUIP_STEP_CONFIG.steps) {
+        const equipStepGroupMember = stepConfig.equipId ? props.data.equip.find( g => Number(g.group.domainIdentifier) === stepConfig.equipId) : null;
+        const flowStepGroupMember = stepConfig.flowId ? props.data.subFlows.find( g => Number(g.group.domainIdentifier) === stepConfig.flowId) : null;
+        const eventStepGroupMember = stepConfig.eventId ? props.data.events.find( g => Number(g.group.domainIdentifier) === stepConfig.eventId) : null;
+        
+        const step: EquipFlowStep = {
+            id: stepConfig.id,
+            name: stepConfig.name,
+            status: [] // TODO: Status aus props.data extrahieren
+        };
+        
+        if(equipStepGroupMember) {
+            step.status.push({
+                status: "Absolviert",
+                datum: equipStepGroupMember.memberStartDate ? new Date(equipStepGroupMember.memberStartDate) : undefined,
+                info: equipStepGroupMember.registeredBy?.toString()
+            });    
+        }        
+        if(flowStepGroupMember) {
+            step.status.push({
+                status: "Potential",
+                datum: flowStepGroupMember.memberStartDate ? new Date(flowStepGroupMember.memberStartDate) : undefined,
+                info: flowStepGroupMember.group.title
+            });    
+        }
+        if(eventStepGroupMember) {
+            step.status.push({
+                status: "Angemeldet",
+                datum: eventStepGroupMember.memberStartDate ? new Date(eventStepGroupMember.memberStartDate) : undefined,
+                info: eventStepGroupMember.group.title
+            });    
+        }
+        equipFlowStatus.value.push(step);
+    }
+}
+
 // Watcher: beim Wechsel in 'taufe' nachladen
 watch(() => activeSection.value, (val) => {
+    if (val === 'equip') {
+        populateEquipFlowStatusFromData();
+        return;
+    }
+
     if (val === 'taufe') {
         loadTaufePerson();
     } else {
