@@ -73,13 +73,7 @@
             </Fieldset>
             <Fieldset legend="Aktionen">
                 <FlowController
-                    :load-actions="() => [
-                        {
-                            action: () => appOpenEquipFlow(),
-                            label: 'Equip Flow öffnen',
-                            icon: 'pi pi-play'
-                        },                        
-                    ]"
+                    :load-actions="loadEquipFlowActions"
                 />
             </Fieldset>
         </div>
@@ -91,13 +85,7 @@
             </Fieldset>
             <Fieldset legend="Aktionen">
                 <FlowController
-                    :load-actions="() => [
-                        {
-                            action: () => appOpenTaufeFlow(),
-                            label: 'Taufe Flow öffnen',
-                            icon: 'pi pi-play'
-                        },
-                    ]"
+                    :load-actions="loadTaufeFlowActions"
                 />
             </Fieldset>
         </div>
@@ -341,6 +329,56 @@ const masterData = inject<PersonMasterData | null>('masterData', null);
 const activeSection = ref('connect');
 const equipFlowStatus = ref<Array<EquipFlowStep>>([]);
 const taufeFlowStatus = ref<Array<EquipFlowStep>>([]);
+
+type ExternalFlowId = 'equip' | 'taufe';
+type FlowActionParameterType = 'integer' | 'string';
+
+type FlowActionParameter = {
+    name: string;
+    type: FlowActionParameterType;
+    required: boolean;
+    description?: string;
+    constraints?: Record<string, unknown>;
+};
+
+type FlowApiAction = {
+    id: string;
+    action: string;
+    title: string;
+    description?: string;
+    fromState: string | null;
+    targetState: string | null;
+    parameters: FlowActionParameter[];
+};
+
+type FlowApiActionsResponse = {
+    data?: FlowApiAction[];
+};
+
+type FlowControllerAction = {
+    action: () => void | Promise<void>;
+    label: string;
+    icon: string;
+};
+
+const EQRM_FLOW_API_BASE_URL = 'https://app.dev.eqrm.de';
+const FLOW_API_BEARER_TOKEN = (import.meta.env.VITE_FLOW_API_KEY || '').trim();
+
+function buildFlowApiHeaders(includeJsonContentType: boolean): Record<string, string> {
+    const headers: Record<string, string> = {
+        Accept: 'application/json'
+    };
+
+    if (includeJsonContentType) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    if (FLOW_API_BEARER_TOKEN) {
+        headers.Authorization = `Bearer ${FLOW_API_BEARER_TOKEN}`;
+    }
+
+    return headers;
+}
 
 // --- Taufe: nachgeladene Personendaten ---
 const taufePerson = ref<Person | null>(null);
@@ -622,20 +660,163 @@ async function loadTaufePerson(): Promise<void> {
 }
 
 /**
- * Öffnet den Equip Flow in einem neuen Tab.
- * Verwendet die getAppLinkForFlow Utility, um die URL zu generieren.
+ * Lädt verfügbare Actions für einen Flow und eine Person.
  */
-function appOpenEquipFlow(): void {
-    const url = getAppLinkForFlow('equip');
-    window.open(url, '_blank');
+async function fetchAvailableFlowActions(flowId: ExternalFlowId, targetPersonId: number): Promise<FlowApiAction[]> {
+    const actionsUrl = `${EQRM_FLOW_API_BASE_URL}/api/v1/flows/${flowId}/person/${targetPersonId}/actions`;
+    const response = await fetch(actionsUrl, {
+        method: 'GET',
+        credentials: 'include',
+        headers: buildFlowApiHeaders(false)
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Fehler beim Laden der Flow-Aktionen (${response.status}): ${errorText}`);
+    }
+
+    const payload = await response.json() as FlowApiActionsResponse;
+    return Array.isArray(payload.data) ? payload.data : [];
 }
 
 /**
- * Öffnet den Taufe Flow in einem neuen Tab.
+ * Weist den Action-Typen ein passendes PrimeIcon zu.
  */
-function appOpenTaufeFlow(): void {
-    const url = getAppLinkForFlow('taufe');
-    window.open(url, '_blank');
+function getFlowActionIcon(actionType: string): string {
+    const actionIconMap: Record<string, string> = {
+        move: 'pi pi-arrow-right',
+        start: 'pi pi-play',
+        complete: 'pi pi-check',
+        remove: 'pi pi-trash',
+        reset: 'pi pi-refresh'
+    };
+    return actionIconMap[actionType] || 'pi pi-cog';
+}
+
+/**
+ * Fragt benötigte Parameter einer Action interaktiv ab.
+ */
+function collectFlowActionParameters(action: FlowApiAction): Record<string, string | number> {
+    const resolvedParams: Record<string, string | number> = {};
+
+    for (const parameter of action.parameters || []) {
+        const constraintHint = parameter.constraints
+            ? ` (${Object.entries(parameter.constraints)
+                .map(([key, value]) => `${key}: ${String(value)}`)
+                .join(', ')})`
+            : '';
+        const inputValue = window.prompt(
+            `${parameter.name}${parameter.required ? ' *' : ''}\n${parameter.description || ''}${constraintHint}`,
+            ''
+        );
+
+        if (inputValue === null || inputValue.trim() === '') {
+            if (parameter.required) {
+                throw new Error(`Pflichtparameter "${parameter.name}" wurde nicht angegeben.`);
+            }
+            continue;
+        }
+
+        if (parameter.type === 'integer') {
+            const parsedValue = Number(inputValue.trim());
+            if (!Number.isInteger(parsedValue)) {
+                throw new Error(`Parameter "${parameter.name}" muss eine ganze Zahl sein.`);
+            }
+            resolvedParams[parameter.name] = parsedValue;
+            continue;
+        }
+
+        resolvedParams[parameter.name] = inputValue.trim();
+    }
+
+    return resolvedParams;
+}
+
+/**
+ * Führt eine Action aus. Es werden mehrere bekannte Run-Routen probiert,
+ * damit die Integration robust bleibt, falls das Backend eine leicht andere Route nutzt.
+ */
+async function runFlowAction(
+    flowId: ExternalFlowId,
+    targetPersonId: number,
+    action: FlowApiAction,
+    parameters: Record<string, string | number>
+): Promise<void> {
+    const attempts: Array<{ url: string; body: unknown }> = [
+        {
+            url: `${EQRM_FLOW_API_BASE_URL}/api/v1/flows/${flowId}/person/${targetPersonId}/actions/${encodeURIComponent(action.id)}/run`,
+            body: { parameters }
+        },
+        {
+            url: `${EQRM_FLOW_API_BASE_URL}/api/v1/flows/${flowId}/person/${targetPersonId}/actions/${encodeURIComponent(action.id)}`,
+            body: { parameters }
+        },
+        {
+            url: `${EQRM_FLOW_API_BASE_URL}/api/v1/flows/${flowId}/person/${targetPersonId}/run`,
+            body: { actionId: action.id, parameters }
+        }
+    ];
+
+    let lastError: Error | null = null;
+
+    for (const attempt of attempts) {
+        try {
+            const response = await fetch(attempt.url, {
+                method: 'POST',
+                credentials: 'include',
+                headers: buildFlowApiHeaders(true),
+                body: JSON.stringify(attempt.body)
+            });
+
+            if (response.ok) {
+                return;
+            }
+
+            const responseText = await response.text();
+            if (response.status === 404 || response.status === 405) {
+                lastError = new Error(`Run-Route nicht gefunden (${response.status}) für ${attempt.url}`);
+                continue;
+            }
+
+            throw new Error(`Flow-Action fehlgeschlagen (${response.status}): ${responseText}`);
+        } catch (error: unknown) {
+            const resolvedError = error instanceof Error ? error : new Error(String(error));
+            if (resolvedError.message.startsWith('Flow-Action fehlgeschlagen')) {
+                throw resolvedError;
+            }
+            lastError = resolvedError;
+        }
+    }
+
+    throw lastError || new Error('Flow-Action konnte nicht ausgeführt werden.');
+}
+
+/**
+ * Baut API-Actions in die Button-Actions für den FlowController um.
+ */
+async function loadFlowActions(flowId: ExternalFlowId): Promise<FlowControllerAction[]> {
+    const id = personId.value;
+    if (!id) {
+        return [];
+    }
+
+    const flowActions = await fetchAvailableFlowActions(flowId, id);
+    return flowActions.map((flowAction): FlowControllerAction => ({
+        label: flowAction.title || flowAction.id,
+        icon: getFlowActionIcon(flowAction.action),
+        action: async () => {
+            const parameters = collectFlowActionParameters(flowAction);
+            await runFlowAction(flowId, id, flowAction, parameters);
+        }
+    }));
+}
+
+async function loadEquipFlowActions(): Promise<FlowControllerAction[]> {
+    return loadFlowActions('equip');
+}
+
+async function loadTaufeFlowActions(): Promise<FlowControllerAction[]> {
+    return loadFlowActions('taufe');
 }
 
 /**
