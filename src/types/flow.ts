@@ -76,11 +76,17 @@ export const FLOW_INITIALS: Record<number, '!0' | '!1' | '!2' | '!3' | '!4' | '!
 } as const;
 
 export type FlowStepDefinition = {
+    /** Laufende interne Schritt-ID innerhalb der Konfiguration. */
     id: number;
+    /** Anzeigename des Schritts (z.B. "Equip 1", "Taufe"). */
     name: string;
+    /** Kurzes Label/Initial für UI-Badges oder Tabellen (z.B. "P", "1", "R"). */
     initials: string;
+    /** Gruppen-ID des Flow-Schritts in ChurchTools/EQRM. */
     flowId: number;
-    equipId?: number;
+    /** Optionale Merkmal-ID, die einen erreichten Meilenstein dokumentiert (z.B. Abschluss/Teilnahme). */
+    completionAttributeId?: number;
+    /** Optionale Event-ID, für eine Eventanmeldung, die mit diesem Schritt verknüpft ist. */
     eventId?: number;
 };
 
@@ -103,7 +109,7 @@ export const EQUIP_STEP_CONFIG: FlowStepConfig = {
             name: 'Equip 1',
             initials: '1',
             flowId: 1701,
-            equipId: 1249,
+            completionAttributeId: 1249,
             eventId: 2286,
         },
         {
@@ -111,7 +117,7 @@ export const EQUIP_STEP_CONFIG: FlowStepConfig = {
             name: 'Equip 2',
             initials: '2',
             flowId: 1704,
-            equipId: 1252,
+            completionAttributeId: 1252,
             eventId: 2289,
         },
         {
@@ -119,7 +125,7 @@ export const EQUIP_STEP_CONFIG: FlowStepConfig = {
             name: 'Equip 3',
             initials: '3',
             flowId: 1707,
-            equipId: 1255,
+            completionAttributeId: 1255,
             eventId: 2292,
         },
         {
@@ -127,7 +133,7 @@ export const EQUIP_STEP_CONFIG: FlowStepConfig = {
             name: 'Equip 4',
             initials: '4',
             flowId: 1710,
-            equipId: 1258,
+            completionAttributeId: 1258,
             eventId: 2423,
         },
         {
@@ -139,11 +145,44 @@ export const EQUIP_STEP_CONFIG: FlowStepConfig = {
     ],
 };
 
+export const TAUFE_STEP_CONFIG: FlowStepConfig = {
+    flowId: FLOW_CONFIG.FLOW_ID_TAUFE,
+    steps: [
+        {
+            id: 0,
+            name: 'Taufe Potential',
+            initials: 'P',
+            flowId: 2159,
+        },
+        {
+            id: 1,
+            name: 'Taufe Q&A',
+            initials: '1',
+            flowId: 2954,
+            completionAttributeId: 2661,
+            eventId: 2183,
+        },
+        {
+            id: 2,
+            name: 'Taufe',
+            initials: '2',
+            flowId: 2165,
+            completionAttributeId: 2957,
+            eventId: 2949,
+        },
+        {
+            id: 3,
+            name: 'Taufe Review',
+            initials: 'R',
+            flowId: 2171,
+        },
+    ],
+};
 
 
 // Type guards for better type safety
 export type FlowGroupId = typeof FLOW_GROUP_IDS[number];
-export type EquipId = NonNullable<(typeof EQUIP_STEP_CONFIG.steps)[number]['equipId']>;
+export type EquipId = NonNullable<(typeof EQUIP_STEP_CONFIG.steps)[number]['completionAttributeId']>;
 export type EquipEventId = NonNullable<(typeof EQUIP_STEP_CONFIG.steps)[number]['eventId']>;
 export type EquipFlowGroupId = (typeof EQUIP_STEP_CONFIG.steps)[number]['flowId'];
 

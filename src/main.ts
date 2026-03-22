@@ -97,7 +97,7 @@ try {
     //  --------------------------------------------------------------------------
     console.log('Loading equip groups...');
     const equipIds = Array.from(new Set(
-        EQUIP_STEP_CONFIG.steps.flatMap(step => [step.equipId, step.flowId, step.eventId])
+        EQUIP_STEP_CONFIG.steps.flatMap(step => [step.completionAttributeId, step.flowId, step.eventId])
             .filter((id): id is number => typeof id === 'number')
     ));
     const allEquipGroups = ref<Array<Group> | null>(null)

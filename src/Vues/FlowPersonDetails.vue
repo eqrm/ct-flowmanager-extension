@@ -86,22 +86,19 @@
 
         <!-- Taufe -->
         <div v-show="activeSection === 'taufe'">
-            <SubFlowStepTable
-                legend="Nächster Schritt"
-                :members="props.data.subFlows"
-                :sub-flow-parent="taufeSubFlowParent"
-                :flow-url="getAppLinkForFlow('taufe')"
-                tooltip-text="Taufe Flow in neuem Tab öffnen"
-            />
-            <Fieldset legend="Taufe">
-                <div v-if="taufeLoading">Lade Taufe-Daten…</div>
-                <div v-else-if="taufeError" class="text-red-600">Fehler: {{ taufeError }}</div>
-                <div v-else-if="taufePerson">
-                    <div class="mb-1"><strong>Taufdatum:</strong> {{ taufePerson.dateOfBaptism ? new Date(taufePerson.dateOfBaptism).toLocaleDateString() : '–' }}</div>
-                    <div class="mb-1"><strong>Getauft von:</strong> {{ taufePerson.baptisedBy ?? '–' }}</div>
-                    <div class="mb-1"><strong>Taufort:</strong> {{ taufePerson.placeOfBaptism ?? '–' }}</div>
-                </div>
-                <div v-else>Keine Taufe-Informationen vorhanden.</div>
+            <Fieldset legend="Steps">
+                <EquipDataView :flow-steps="taufeFlowSteps" />
+            </Fieldset>
+            <Fieldset legend="Aktionen">
+                <FlowController
+                    :load-actions="() => [
+                        {
+                            action: () => appOpenTaufeFlow(),
+                            label: 'Taufe Flow öffnen',
+                            icon: 'pi pi-play'
+                        },
+                    ]"
+                />
             </Fieldset>
         </div>
         
@@ -294,8 +291,10 @@ import FlowController from './FlowController.vue';
 import {  
     FLOW_CONFIG,
     EQUIP_STEP_CONFIG,
+    TAUFE_STEP_CONFIG,
     getAppLinkForFlow, 
     type EquipFlowStep,
+    type FlowStepConfig,
     type TableDataSet, 
     type SubFlowStep
 } from '../types/flow';
@@ -341,11 +340,11 @@ const masterData = inject<PersonMasterData | null>('masterData', null);
 
 const activeSection = ref('connect');
 const equipFlowStatus = ref<Array<EquipFlowStep>>([]);
+const taufeFlowStatus = ref<Array<EquipFlowStep>>([]);
 
 // --- Taufe: nachgeladene Personendaten ---
 const taufePerson = ref<Person | null>(null);
 const taufeLoading = ref(false);
-const taufeError = ref<string | null>(null);
 
 // =============================================================================
 // COMPUTED PROPERTIES
@@ -380,11 +379,9 @@ const offboardingSubFlowParent = computed(() =>
     allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_OFFBOARDING)
 );
 
-const taufeSubFlowParent = computed(() => 
-    allSubFlows.find(subFlow => subFlow.id === FLOW_CONFIG.FLOW_ID_TAUFE)
-);
 
 const equipFlowSteps = computed<Array<EquipFlowStep>>(() => equipFlowStatus.value);
+const taufeFlowSteps = computed<Array<EquipFlowStep>>(() => taufeFlowStatus.value);
 
 // =============================================================================
 // MENU CONFIGURATION
@@ -634,44 +631,78 @@ function appOpenEquipFlow(): void {
 }
 
 /**
- * Befüllt den lokalen Equip-Status-Container aus den Personendaten.
+ * Öffnet den Taufe Flow in einem neuen Tab.
  */
-function populateEquipFlowStatusFromData(): void {
-    equipFlowStatus.value = [];
-    for (const stepConfig of EQUIP_STEP_CONFIG.steps) {
-        const equipStepGroupMember = stepConfig.equipId ? props.data.equip.find( g => Number(g.group.domainIdentifier) === stepConfig.equipId) : null;
-        const flowStepGroupMember = stepConfig.flowId ? props.data.subFlows.find( g => Number(g.group.domainIdentifier) === stepConfig.flowId) : null;
-        const eventStepGroupMember = stepConfig.eventId ? props.data.events.find( g => Number(g.group.domainIdentifier) === stepConfig.eventId) : null;
-        
+function appOpenTaufeFlow(): void {
+    const url = getAppLinkForFlow('taufe');
+    window.open(url, '_blank');
+}
+
+/**
+ * Erstellt aus einer Schrittkonfiguration den anzeigbaren Flow-Status.
+ */
+function buildFlowStatusFromConfig(config: FlowStepConfig): Array<EquipFlowStep> {
+    const flowStatus: Array<EquipFlowStep> = [];
+
+    for (const stepConfig of config.steps) {
+        const completionStepGroupMember = stepConfig.completionAttributeId
+            ? props.data.equip.find(g => Number(g.group.domainIdentifier) === stepConfig.completionAttributeId)
+            : null;
+        const flowStepGroupMember = stepConfig.flowId
+            ? props.data.subFlows.find(g => Number(g.group.domainIdentifier) === stepConfig.flowId)
+            : null;
+        const eventStepGroupMember = stepConfig.eventId
+            ? props.data.events.find(g => Number(g.group.domainIdentifier) === stepConfig.eventId)
+            : null;
+
         const step: EquipFlowStep = {
             id: stepConfig.id,
             name: stepConfig.name,
-            status: [] // TODO: Status aus props.data extrahieren
+            status: []
         };
-        
-        if(equipStepGroupMember) {
+
+        if (completionStepGroupMember) {
             step.status.push({
-                status: "Absolviert",
-                datum: equipStepGroupMember.memberStartDate ? new Date(equipStepGroupMember.memberStartDate) : undefined,
-                info: equipStepGroupMember.registeredBy?.toString()
-            });    
-        }        
-        if(flowStepGroupMember) {
+                status: 'Absolviert',
+                datum: completionStepGroupMember.memberStartDate ? new Date(completionStepGroupMember.memberStartDate) : undefined,
+                info: completionStepGroupMember.registeredBy?.toString()
+            });
+        }
+
+        if (flowStepGroupMember) {
             step.status.push({
-                status: "Potential",
+                status: 'Potential',
                 datum: flowStepGroupMember.memberStartDate ? new Date(flowStepGroupMember.memberStartDate) : undefined,
                 info: flowStepGroupMember.group.title
-            });    
+            });
         }
-        if(eventStepGroupMember) {
+
+        if (eventStepGroupMember) {
             step.status.push({
-                status: "Angemeldet",
+                status: 'Angemeldet',
                 datum: eventStepGroupMember.memberStartDate ? new Date(eventStepGroupMember.memberStartDate) : undefined,
                 info: eventStepGroupMember.group.title
-            });    
+            });
         }
-        equipFlowStatus.value.push(step);
+
+        flowStatus.push(step);
     }
+
+    return flowStatus;
+}
+
+/**
+ * Befüllt den lokalen Equip-Status-Container aus den Personendaten.
+ */
+function populateEquipFlowStatusFromData(): void {
+    equipFlowStatus.value = buildFlowStatusFromConfig(EQUIP_STEP_CONFIG);
+}
+
+/**
+ * Befüllt den lokalen Taufe-Status-Container aus den Personendaten.
+ */
+function populateTaufeFlowStatusFromData(): void {
+    taufeFlowStatus.value = buildFlowStatusFromConfig(TAUFE_STEP_CONFIG);
 }
 
 // Watcher: beim Wechsel in 'taufe' nachladen
@@ -682,6 +713,7 @@ watch(() => activeSection.value, (val) => {
     }
 
     if (val === 'taufe') {
+        populateTaufeFlowStatusFromData();
         loadTaufePerson();
     } else {
         // optional: Daten freigeben, wenn Sektion verlassen wird

@@ -261,7 +261,6 @@
                 this._allConnectGroups = (await churchtoolsClient.getAllPages<Array<Group>>('/groups', {
                     group_type_ids: [FLOW_CONFIG.CONNECT_GROUPTYPE_ID]
                 })).flat();
-                
                 this._allConnectGroupLeaders = (await Promise.all(
                     this._allConnectGroups.map(async g => {
                         const connectgroupLeaders = (await churchtoolsClient.get<Array<GroupMember>>(`/groups/${g.id}/members`))
@@ -334,12 +333,12 @@
     const filterText = ref<string | null>(null);
 
     const equipIds = EQUIP_STEP_CONFIG.steps
-        .map(step => step.equipId)
+        .map(step => step.completionAttributeId)
         .filter((id): id is number => typeof id === 'number');
 
     const equipInitialsMapping: Record<number, string> = EQUIP_STEP_CONFIG.steps.reduce((mapping, step) => {
-        if (typeof step.equipId === 'number') {
-            mapping[step.equipId] = step.initials;
+        if (typeof step.completionAttributeId === 'number') {
+            mapping[step.completionAttributeId] = step.initials;
         }
         return mapping;
     }, {} as Record<number, string>);
@@ -417,8 +416,7 @@
                     });
                     const equipGroups = personsGroups.filter(g => {
                         const isEquipType = g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_MERKMAL;
-                        const isEquipGroup = equipIds.includes(Number(g.group.domainIdentifier));                    
-                        return isEquipType && isEquipGroup;
+                        return isEquipType;
                     });
                     const connectGroups = personsGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.CONNECT_GROUPTYPE_ID);
                     const flowGroupJoins = flowGroups.map(g => g.memberStartDate ? new Date(g.memberStartDate) : null);
