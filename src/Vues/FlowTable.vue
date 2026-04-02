@@ -197,6 +197,7 @@
         v-model:visible="personDialogVisible"
         :data="selectedRow"
         :connectLeaders="connectGroupSetInstance.allConnectGroupLeaders"
+        @equip-action-triggered="onEquipActionTriggered"
     />
     <PersonPickerDialog
         v-model:visible="personPickerVisible"
@@ -256,6 +257,9 @@
         private _allConnectGroups: Array<Group> = [];
         private _allConnectGroupLeaders: Array<GroupMember> = [];
 
+        /**
+         * Lädt alle Connect-Gruppen und deren Leitende aus ChurchTools neu.
+         */
         public async reload() {
             try {
                 this._allConnectGroups = (await churchtoolsClient.getAllPages<Array<Group>>('/groups', {
@@ -274,21 +278,36 @@
             }
         }
 
+        /**
+         * Ermittelt alle Connect-Leitenden für die angegebenen Gruppen-IDs.
+         *
+         * @param groupIds - Domain-Identifier der Connect-Gruppen
+         * @returns Gefilterte Liste der Leitenden
+         */
         public getLeaders(groupIds: Array<number>): Array<GroupMember> {
             const leaders: Array<GroupMember> = [];
             leaders.push(...this._allConnectGroupLeaders.filter(l => groupIds.includes(Number(l.group.domainIdentifier))));
             return leaders;
         }
         
+        /**
+         * Gibt alle geladenen Connect-Gruppen zurück.
+         */
         public get allConnectGroups(): Array<Group> {
             return this._allConnectGroups;
         }
 
+        /**
+         * Gibt alle geladenen Connect-Leitenden zurück.
+         */
         public get allConnectGroupLeaders(): Array<GroupMember> {
             return this._allConnectGroupLeaders;
         }
     }
 
+    /**
+     * Standardanzahl an Zeilen pro Seite in der DataTable.
+     */
     const MAX_ROWS = 10;
     const tableDataSet = ref<Array<TableDataSet>>([]);
     const connectGroupSetInstance = new ConnectGroupSet();
@@ -301,6 +320,12 @@
     const personDialogVisible = ref(false);
     const personPickerVisible = ref(false);
     const selectedRow = ref<TableDataSet | null>(null);
+
+    /**
+     * Öffnet den Detaildialog für die ausgewählte Tabellenzeile.
+     *
+     * @param row - Datensatz der ausgewählten Person
+     */
     const openPersonDialog = (row: TableDataSet) => {
         selectedRow.value = row;
         personDialogVisible.value = true;
@@ -310,13 +335,18 @@
     const serverSortField = ref<'name' | 'vorname' | 'joined'>('name');
     const serverSortOrder = ref<1 | -1>(1);
 
-    // Mappe die UI-Felder auf API-Felder
+    /**
+     * Übersetzt sortierbare UI-Felder in die API-Feldnamen für Server-Sorting.
+     */
     const orderFields: Record<'name' | 'vorname' | 'joined', string> = {
         name: 'person_lastName',
         vorname: 'person_firstName',
         joined: 'member_memberStartDate',
     };
 
+    /**
+     * Übersetzt PrimeVue-Sortorder (`1` / `-1`) in API-Richtungen (`ASC` / `DESC`).
+     */
     const orderDirections: Record<'1' | '-1', 'ASC' | 'DESC'> = {
         '1': 'ASC',
         '-1': 'DESC',
@@ -326,16 +356,25 @@
         flowId: number | null
     }>();
 
+    /**
+     * Enthält den aktiven Tabellenfilter; initial mit übergebenem Flow oder Standard-Flow.
+     */
     const filters = ref({
         flow: { value: props.flowId ?? FLOW_GROUP_IDS[0], matchMode: FilterMatchMode.EQUALS },
     });
 
     const filterText = ref<string | null>(null);
 
+    /**
+     * Liste aller relevanten Equip-Gruppen-IDs aus der Step-Konfiguration.
+     */
     const equipIds = EQUIP_STEP_CONFIG.steps
         .map(step => step.completionAttributeId)
         .filter((id): id is number => typeof id === 'number');
 
+    /**
+     * Mapping von Equip-Gruppen-ID auf Kürzel für die Avatar-Darstellung.
+     */
     const equipInitialsMapping: Record<number, string> = EQUIP_STEP_CONFIG.steps.reduce((mapping, step) => {
         if (typeof step.completionAttributeId === 'number') {
             mapping[step.completionAttributeId] = step.initials;
@@ -348,15 +387,26 @@
     });
 
     const selectedFlowId = computed(() => filters.value.flow.value as number | null);
+    const lastFetchEvent = ref<DataTablePageEvent>({ page: 0, rows: MAX_ROWS });
 
     const currentUserId = computed(() => Number(whoami?.id));
 
+    /**
+     * Übernimmt den Sortierstatus aus der DataTable in die serverseitigen Sortier-Refs.
+     *
+     * @param event - PrimeVue Sort-Event mit Feld und Richtung
+     */
     const onServerSort = (event: any) => {
         serverSortField.value = event.sortField;
         serverSortOrder.value = event.sortOrder;
     };
 
 
+    /**
+     * Übernimmt die Auswahl aus dem PersonPicker und startet eine neue Suche.
+     *
+     * @param payload - Ausgewählte Person inklusive Gruppenkontext
+     */
     const onPersonPickerConfirm = (payload: { person: DomainObjectPerson & { displayName: string }, groups: Array<GroupMember> }) => {
         if (!payload.person) return;
         if (!payload.groups || payload.groups.length === 0) return;
@@ -368,8 +418,31 @@
         personPickerVisible.value = false;
     };
 
+    /**
+     * Aktualisiert die Tabellenzeile nach einer Equip-Aktion und synchronisiert den Detaildialog.
+     *
+     * @param personId - Domain-Identifier der bearbeiteten Person
+     */
+    const onEquipActionTriggered = async (personId: number): Promise<void> => {
+        await fetchData(lastFetchEvent.value);
 
+        const refreshedRow = tableDataSet.value.find(
+            row => Number(row.person.person.domainIdentifier) === personId
+        );
+
+        if (refreshedRow) {
+            selectedRow.value = refreshedRow;
+        }
+    };
+
+
+    /**
+     * Lädt die Flow-Tabellendaten serverseitig mit Paging, Suche und Sortierung.
+     *
+     * @param event - Paging-Event der DataTable
+     */
     const fetchData = async (event: DataTablePageEvent) => {
+        lastFetchEvent.value = { ...event };
         loading.value = true;
         try {            
             const stationId = await fetchStationFilterId(currentUserId.value);
@@ -446,16 +519,29 @@
         }     
     };
 
+    /**
+     * Lädt Daten neu, sobald sich Sortierung oder Flow-Filter ändern.
+     */
     watch([serverSortField, serverSortOrder, filters], async () => {
         await fetchData({ page: 0, rows: MAX_ROWS });
     });
 
+    /**
+     * Initialisiert beim Mounten die Connect-Daten und die erste Tabellenabfrage.
+     */
     onMounted(async () => {
         await connectGroupSetInstance.reload();
         await fetchData({page:0, rows: MAX_ROWS});
     });
 
     //  Helpers
+
+    /**
+     * Erzeugt einen robusten Anzeigenamen aus Vor- und Nachname.
+     *
+     * @param member - Gruppenmitglied mit Personendaten
+     * @returns Vollständiger Name oder Fallback-Text
+     */
     const fullName = (member: GroupMember): string => {
         const firstName = member?.person?.domainAttributes?.firstName?.trim() ?? '';
         const lastName = member?.person?.domainAttributes?.lastName?.trim() ?? '';
@@ -468,10 +554,23 @@
 
     type MemberSeverity = 'secondary' | 'success' | 'info' | 'warn' | 'danger' | 'contrast' | null;
 
+    /**
+     * Sucht das Connect-Gruppenmitglied einer leitenden Person innerhalb der Mitgliedschaften.
+     *
+     * @param connectLeader - Leitendes Connect-Mitglied
+     * @param membersConnectGroups - Connect-Mitgliedschaften der betrachteten Person
+     * @returns Gefundenes Mitglied oder null
+     */
     const getGroupMemberByConnectLeader = (connectLeader: GroupMember, membersConnectGroups: Array<GroupMember>): GroupMember | null => {
         return membersConnectGroups.find(m => m.group.domainIdentifier === connectLeader.group.domainIdentifier) || null;
     };
 
+    /**
+     * Leitet den Gruppenstatus auf die visuelle Badge-Schwere ab.
+     *
+     * @param member - Gruppenmitglied oder null
+     * @returns PrimeVue-Severity für OverlayBadge
+     */
     const getMemberSeverity = (member: GroupMember | null): MemberSeverity => {
         const memberStatus = member?.groupMemberStatus;
         if (!memberStatus) {
@@ -486,6 +585,12 @@
     return statusMap[memberStatus];
     };
 
+    /**
+     * Übersetzt den internen Membership-Status in eine verständliche Bezeichnung.
+     *
+     * @param member - Gruppenmitglied oder null
+     * @returns Lokalisierter Statustext
+     */
     const getMembershipStatusText = (member: GroupMember | null): string => {
         const statusMap: Record<MemberStatus, string> = {
             active: 'Durch Connecter übernommen',
@@ -509,6 +614,12 @@
     };
 
     
+    /**
+     * Lädt die Stations-Filter-ID aus den globalen Personeneinstellungen.
+     *
+     * @param id - Personen-ID des aktuellen Benutzers
+     * @returns Stations-ID oder null bei Fehler bzw. fehlendem Wert
+     */
     const fetchStationFilterId = async (id: number): Promise<number | null> => {
         try {
             const personSettings = await churchtoolsClient.get<PersonSetting | null>(`/persons/${id}/settings/global/station`);

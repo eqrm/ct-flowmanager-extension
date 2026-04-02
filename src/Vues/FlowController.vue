@@ -27,7 +27,7 @@
     import Button from 'primevue/button';
 
     type FlowAction = {
-        action: () => void;
+        action: () => void | Promise<void>;
         label: string;
         icon: string;
     };
@@ -43,8 +43,8 @@
 
     const actions = ref<FlowAction[]>([]);
 
-    const runAction = (action: FlowAction): void => {
-        action.action();
+    const runAction = async (action: FlowAction): Promise<void> => {
+        await Promise.resolve(action.action());
     };
 
     onMounted(async () => {

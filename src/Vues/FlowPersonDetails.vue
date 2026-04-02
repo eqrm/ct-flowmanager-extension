@@ -73,13 +73,8 @@
             </Fieldset>
             <Fieldset legend="Aktionen">
                 <FlowController
-                    :load-actions="() => [
-                        {
-                            action: () => appOpenEquipFlow(),
-                            label: 'Equip Flow öffnen',
-                            icon: 'pi pi-play'
-                        },                        
-                    ]"
+                    :key="equipActionsReloadKey"
+                    :load-actions="() => equipActions"
                 />
             </Fieldset>
         </div>
@@ -304,6 +299,10 @@ import type {
     GroupMember, 
     PersonMasterData 
 } from '../utils/ct-types';
+import {
+    flowApiClient,
+    type FlowActionsApiAction,
+} from '../utils/flowApiClient';
 import type { 
     MenuItem 
 } from 'primevue/menuitem';
@@ -323,6 +322,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     (e: 'update:visible', value: boolean): void;
+    (e: 'equip-action-triggered', personDomainIdentifier: number): void;
 }>();
 
 // =============================================================================
@@ -341,6 +341,13 @@ const masterData = inject<PersonMasterData | null>('masterData', null);
 const activeSection = ref('connect');
 const equipFlowStatus = ref<Array<EquipFlowStep>>([]);
 const taufeFlowStatus = ref<Array<EquipFlowStep>>([]);
+const equipActionsReloadKey = ref(0);
+
+type FlowAction = {
+    action: () => void | Promise<void>;
+    label: string;
+    icon: string;
+};
 
 // --- Taufe: nachgeladene Personendaten ---
 const taufePerson = ref<Person | null>(null);
@@ -382,6 +389,13 @@ const offboardingSubFlowParent = computed(() =>
 
 const equipFlowSteps = computed<Array<EquipFlowStep>>(() => equipFlowStatus.value);
 const taufeFlowSteps = computed<Array<EquipFlowStep>>(() => taufeFlowStatus.value);
+const equipActions = ref<Array<FlowAction>>([
+    {
+        action: () => appOpenEquipFlow(),
+        label: 'Equip Flow öffnen',
+        icon: 'pi pi-play'
+    }
+]);
 
 // =============================================================================
 // MENU CONFIGURATION
@@ -705,10 +719,76 @@ function populateTaufeFlowStatusFromData(): void {
     taufeFlowStatus.value = buildFlowStatusFromConfig(TAUFE_STEP_CONFIG);
 }
 
-// Watcher: beim Wechsel in 'taufe' nachladen
+/**
+ * Lädt die Equip-Aktionen für die aktuell ausgewählte Person.
+ */
+async function loadEquipActions(): Promise<void> {
+    await ensureFlowClientToken();
+    const apiActions: Array<FlowActionsApiAction> = await flowApiClient.getFlowActions(personId.value, 'equip');
+
+    if (apiActions.length === 0) {
+        equipActions.value = [
+            {
+                action: () => appOpenEquipFlow(),
+                label: 'Equip Flow öffnen',
+                icon: 'pi pi-play'
+            }
+        ];
+        equipActionsReloadKey.value += 1;
+        return;
+    }
+
+    equipActions.value = apiActions.map((apiAction) => ({
+        label: apiAction.title,
+        icon: apiAction.icon ?? 'pi pi-play',
+        action: async () => {
+            await flowApiClient.runFlowAction(personId.value, 'equip', apiAction.id);
+            emit('equip-action-triggered', personId.value);
+        },
+    }));
+    equipActionsReloadKey.value += 1;
+}
+
+/**
+ * Lädt einmalig ein ChurchTools-Logintoken und konfiguriert damit den {@link flowApiClient}.
+ *
+ * Ist das Token im Singleton bereits gesetzt, kehrt die Funktion sofort zurück (No-op).
+ * Andernfalls werden `/whoami` und `/persons/{id}/logintoken` aufgerufen und das
+ * resultierende Token via `flowApiClient.configure()` gesetzt.
+ *
+ * @throws {Error} Wenn der Server kein Token zurückgibt oder ein Netzwerkfehler auftritt.
+ */
+async function ensureFlowClientToken(): Promise<void> {
+    if (flowApiClient.isTokenConfigured()) return;
+    try {
+        const whoAmI = await churchtoolsClient.get<Person>('/whoami');
+        const tokenResponse = await churchtoolsClient.get<string>(`/persons/${whoAmI.id}/logintoken`);
+        const token = tokenResponse;
+        if (!token) throw new Error('Konnte keinen Logintoken laden.');
+        flowApiClient.configure({ token });
+    } catch (error) {
+        console.error('Fehler beim Laden des Logintokens:', error);
+        throw error;
+    }
+}
+
+/**
+ * Reagiert auf Wechsel der aktiven Sektion und lädt sektionsspezifische Daten nach.
+ *
+ * - `equip`: Befüllt den Equip-Flow-Status aus den Personendaten, lädt dann per
+ *   {@link ensureFlowClientToken} + {@link flowApiClient.getFlowActions} die verfügbaren
+ *   API-Aktionen und schreibt sie in `equipActions`.
+ * - `taufe`: Befüllt den Taufe-Flow-Status und lädt die vollständigen Personendaten
+ *   via {@link loadTaufePerson}.
+ * - Alle anderen Sektionen: keine Nachlade-Logik (auskommentierte Freigabe-Option vorhanden).
+ */
 watch(() => activeSection.value, (val) => {
     if (val === 'equip') {
         populateEquipFlowStatusFromData();
+        void loadEquipActions()
+            .catch((error: unknown) => {
+                console.error('Fehler beim Aktualisieren der Equip-Aktionen:', error);
+            });
         return;
     }
 
@@ -721,6 +801,17 @@ watch(() => activeSection.value, (val) => {
         // taufeError.value = null;
     }
 });
+
+watch(
+    () => props.data,
+    () => {
+        if (activeSection.value !== 'equip') return;
+        populateEquipFlowStatusFromData();
+        void loadEquipActions().catch((error: unknown) => {
+            console.error('Fehler beim Aktualisieren des Equip-Blocks:', error);
+        });
+    }
+);
 
 
 </script>
