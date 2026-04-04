@@ -1,8 +1,9 @@
-import type { GroupMember, Group } from '../utils/ct-types';
+import type { GroupMember, Group, Person } from '../utils/ct-types';
 
 export type TableDataSet = {
-    person: GroupMember;
-    flow: Array<GroupMember>;
+    asGroupMember: GroupMember;         // Personendaten als Mitglied einer Flow-Gruppe
+    asPerson: Person;                   // Vollständige Personendaten für Zugriff auf Attribute wie Vorname, Nachname, etc.
+    commitment: Array<GroupMember>;
     connect: Array<GroupMember>;
     subFlows: Array<GroupMember>;
     connectLeaders: Array<GroupMember>;
@@ -42,27 +43,26 @@ export const FLOW_CONFIG = {
     FLOW_ID_OFFBOARDING: 2761,
 } as const;
 
-export type EqrmAppFlowType =
-    | 'egroups'
-    | 'teamconnect'
-    | 'taufe'
-    | 'offboarding'
-    | 'equip';
+export const EQRM_APP_FLOWS = {
+    EGROUPS: 'egroups',
+    TEAMCONNECT: 'teamconnect',
+    TAUFE: 'taufe',
+    OFFBOARDING: 'offboarding',
+    EQUIP: 'equip',
+} as const;
+
+export type EqrmAppFlowType = typeof EQRM_APP_FLOWS[keyof typeof EQRM_APP_FLOWS];
 
 export const EQRM_APP_CONFIG = {
     BASE_URL: 'https://app.eqrm.de/',
     FLOW_URL: 'flows/start-flow',
     FLOW_PARAM_FLOW: 'flow',
-    FLOW_PARAM_VALUE_EGROUPS: 'egroups',
-    FLOW_PARAM_VALUE_TEAMS: 'teamconnect',
-    FLOW_PARAM_VALUE_TAUFE: 'taufe',
-    FLOW_PARAM_VALUE_OFFBOARDING: 'offboarding',
-    FLOW_PARAM_VALUE_EQUIP: 'equip',
+    FLOW_TYPES: EQRM_APP_FLOWS,
 } as const;
 
 
 // Flow Group IDs (!0New - !6Friend)
-export const FLOW_GROUP_IDS = [671, 674, 677, 680, 683, 686, 1046] as const;
+export const COMMITMENT_GROUP_IDS = [671, 674, 677, 680, 683, 686, 1046] as const;
 
 // Flow ID to Level mapping
 export const FLOW_INITIALS: Record<number, '!0' | '!1' | '!2' | '!3' | '!4' | '!5' | '!6'> = {
@@ -181,7 +181,7 @@ export const TAUFE_STEP_CONFIG: FlowStepConfig = {
 
 
 // Type guards for better type safety
-export type FlowGroupId = typeof FLOW_GROUP_IDS[number];
+export type FlowGroupId = typeof COMMITMENT_GROUP_IDS[number];
 export type EquipId = NonNullable<(typeof EQUIP_STEP_CONFIG.steps)[number]['completionAttributeId']>;
 export type EquipEventId = NonNullable<(typeof EQUIP_STEP_CONFIG.steps)[number]['eventId']>;
 export type EquipFlowGroupId = (typeof EQUIP_STEP_CONFIG.steps)[number]['flowId'];
@@ -209,33 +209,30 @@ export type EquipFlowStep = {
  * können direkt für Buttons oder Links verwendet werden, die Flows in einem neuen Tab öffnen.
  * 
  * @param flowType - Der Typ des zu startenden Flows
- *                   ('egroups' | 'teamconnect' | 'taufe' | 'offboarding' | 'equip')
+ *                   (siehe {@link EQRM_APP_FLOWS})
  * 
  * @returns Vollständige URL zum Flow-Start in der EQRM-App
  * 
  * @example
  * ```typescript
- * const equipUrl = getAppLinkForFlow('equip');
+ * const equipUrl = getAppLinkForFlow(EQRM_APP_FLOWS.EQUIP);
  * // => 'https://app.eqrm.de/flows/start-flow?flow=equip'
  * 
- * const groupsUrl = getAppLinkForFlow('egroups');
+ * const groupsUrl = getAppLinkForFlow(EQRM_APP_FLOWS.EGROUPS);
  * // => 'https://app.eqrm.de/flows/start-flow?flow=egroups'
  * ```
  * 
  * @example
  * ```vue
  * <Button 
- *   :href="getAppLinkForFlow('teamconnect')" 
+ *   :href="getAppLinkForFlow(EQRM_APP_FLOWS.TEAMCONNECT)" 
  *   as="a"
  *   target="_blank"
  * />
  * ```
  */
 export const getAppLinkForFlow = (flowType: EqrmAppFlowType): string => {
-    let baseUrl = EQRM_APP_CONFIG.BASE_URL;
-    let flowUrl = EQRM_APP_CONFIG.FLOW_URL;
-    let flowParam = EQRM_APP_CONFIG.FLOW_PARAM_FLOW;
-    return `${baseUrl}${flowUrl}?${flowParam}=${flowType}`;
+    return `${EQRM_APP_CONFIG.BASE_URL}${EQRM_APP_CONFIG.FLOW_URL}?${EQRM_APP_CONFIG.FLOW_PARAM_FLOW}=${flowType}`;
 };
 
 /**
@@ -252,7 +249,7 @@ export const getAppLinkForFlow = (flowType: EqrmAppFlowType): string => {
  * @param masterItems - Liste aller verfügbaren Gruppen (z.B. alle Flow-Schritte oder Equip-Levels)
  * @param labelMapping - Mapping von Gruppen-ID zu Anzeige-Label (z.B. `{ 671: '!0', 674: '!1' }`)
  * @param membershipProperty - Property-Name im dataSet, das die zu prüfenden Mitgliedschaften enthält
- *                            (z.B. 'flow', 'equip', 'teams')
+ *                            (z.B. 'commitment', 'equip', 'teams')
  * 
  * @returns Array von Status-Objekten mit folgenden Properties:
  * - `id`: Gruppen-ID

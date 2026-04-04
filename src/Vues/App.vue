@@ -7,7 +7,7 @@
         </TabList>
         <TabPanels>
             <TabPanel value="1">  -->
-                <FlowTable :flow-id="FLOW_GROUP_IDS[0]"/>
+                <FlowTable :commitmentId="COMMITMENT_GROUP_IDS[0]"/>
 <!--            </TabPanel>
             <TabPanel value="2">
                 <EquipDataView />
@@ -34,7 +34,7 @@
     import FlowController from './FlowController.vue';
     import FlowTable from './FlowTable.vue'; 
     import EquipDataView from './EquipDataView.vue';
-    import { FLOW_GROUP_IDS } from '../types/flow.ts';
+    import { COMMITMENT_GROUP_IDS } from '../types/flow.ts';
 
     type FlowAction = {
         action: () => void;

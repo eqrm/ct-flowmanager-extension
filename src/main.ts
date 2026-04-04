@@ -1,6 +1,6 @@
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import type { PersonMasterData, Group, GroupMember, Person, GroupHierarchy } from './utils/ct-types';
-import { FLOW_GROUP_IDS, EQUIP_STEP_CONFIG, FLOW_CONFIG, type SubFlowStep } from './types/flow';
+import { COMMITMENT_GROUP_IDS, EQUIP_STEP_CONFIG, FLOW_CONFIG, type SubFlowStep } from './types/flow';
 import { createApp, ref } from 'vue';
 import App from './Vues/App.vue';
 import PrimeVue from 'primevue/config';
@@ -71,12 +71,12 @@ try {
     })
 
     //  Gruppentypen filtern
-    const allMasterFlowSteps = ref<Array<Group> | null>(null);      //  Alle Tags !0 - !6
+    const allCommitmentSteps = ref<Array<Group> | null>(null);      //  Alle Tags !0 - !6
     const allSubFlowSteps = ref<Array<SubFlowStep> | null>(null);   //  Alle Sub-Flow-Steps, z.B. '#Equip Potential'
     const allSubFlows = ref<Array<SubFlowStep> | null>(null);       //  Alle Sub-Flows, z.B. 'Flow Equip'
-    allMasterFlowSteps.value = flowGroups.filter(g => (FLOW_GROUP_IDS as readonly number[]).includes(g.id)) as Array<Group>;
+    allCommitmentSteps.value = flowGroups.filter(g => (COMMITMENT_GROUP_IDS as readonly number[]).includes(g.id)) as Array<Group>;
     allSubFlows.value = flowGroups.filter(g => g.tags?.some(tag => tag.id === FLOW_CONFIG.TAG_KOPFGRUPPE_ID)) as Array<SubFlowStep>;
-    allSubFlowSteps.value = flowGroups.filter(g => ! (allMasterFlowSteps.value!.some(mf => mf.id === g.id) || allSubFlows.value!.some(sf => sf.id === g.id))) as Array<SubFlowStep>;
+    allSubFlowSteps.value = flowGroups.filter(g => ! (allCommitmentSteps.value!.some(commitment => commitment.id === g.id) || allSubFlows.value!.some(sf => sf.id === g.id))) as Array<SubFlowStep>;
 
     //  Parent-Child-Beziehungen zuweisen
     allSubFlows.value.forEach(subFlow => {
@@ -139,7 +139,7 @@ try {
         }
     });
     app.provide('masterData', masterdata.value);
-    app.provide('allMasterFlowSteps', allMasterFlowSteps.value);
+    app.provide('allCommitmentSteps', allCommitmentSteps.value);
     app.provide('allSubFlowSteps', allSubFlowSteps.value);
     app.provide('allSubFlows', allSubFlows.value);
     app.provide('allEquipGroups', allEquipGroups.value);

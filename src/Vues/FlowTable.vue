@@ -12,18 +12,18 @@
                 </FloatLabel>
                 <FloatLabel variant="on">
                     <Select 
-                        v-model="filters.flow.value" 
-                        :options="allMasterFlowSteps" 
+                        v-model="filters.commitment.value" 
+                        :options="allCommitmentSteps" 
                         style="min-width: 20rem" 
                         :showClear="false" 
                         optionLabel="name" 
                         optionValue="id"
-                        id="flow-select">
+                        id="commitment-select">
                         <template #option="slotProps">
                             <Tag :value="slotProps.option.name"/>
                         </template>
                     </Select>
-                    <label for="flow-select">Tag</label>
+                    <label for="commitment-select">Commitment</label>
                 </FloatLabel>
                 <Button
                     class="ml-2" 
@@ -47,7 +47,7 @@
                     severity="info"
                     outlined
                     rounded
-                    @click="filterText = null; filters.flow.value = FLOW_GROUP_IDS[0]; fetchData({ page: 0, rows: MAX_ROWS })"
+                    @click="filterText = null; filters.commitment.value = COMMITMENT_GROUP_IDS[0]; fetchData({ page: 0, rows: MAX_ROWS })"
                     v-tooltip.bottom="`Suche leeren`">
                 </Button>
             </div>
@@ -66,7 +66,7 @@
                 filterDisplay="menu"
                 @sort="onServerSort"        
                 @page="fetchData"
-                dataKey="data.person.person.domainAttribute.id" 
+                dataKey="data.asGroupMember.person.domainAttribute.id" 
                 responsiveLayout="scroll" 
                 rowExpansionTemplate="slotProps" 
                 columnResizeMode="fit">
@@ -77,7 +77,7 @@
                     header="Vorname" 
                     :sortable="true">
                     <template #body="{ data }">
-                        {{ data.person.person.domainAttributes.firstName }}
+                        {{ data.asGroupMember.person.domainAttributes.firstName }}
                     </template>
                 </Column>
                 <Column 
@@ -85,22 +85,22 @@
                     header="Name" 
                     :sortable="true">
                     <template #body="{ data }">
-                        {{ data.person.person.domainAttributes.lastName }}
+                        {{ data.asGroupMember.person.domainAttributes.lastName }}
                     </template>
                 </Column>
                 
                 <!-- Flow -->
                 <Column 
                     header="Tag"
-                    field="flow" 
+                    field="commitment" 
                     :showFilterMenu="true" 
                     :showFilterMatchModes="false">
                     <template #body="slotProps">
                         <AvatarDataColumn
                             :data="slotProps.data"
-                            :master-data="allMasterFlowSteps"
+                            :master-data="allCommitmentSteps"
                             :level-mapping="FLOW_INITIALS"
-                            data-property="flow"
+                            data-property="commitment"
                         />
                     </template>
                 </Column> 
@@ -161,7 +161,7 @@
                     dataType="date"
                     :sortable="true">
                     <template #body="{ data }">
-                        {{ data.person.memberStartDate ? new Date(data.person.memberStartDate).toLocaleDateString() : '–' }}
+                        {{ data.asGroupMember.memberStartDate ? new Date(data.asGroupMember.memberStartDate).toLocaleDateString() : '–' }}
                     </template>
                 </Column>
                 
@@ -169,19 +169,19 @@
                 <Column>
                     <template #body="slotProps">
                         <Button 
-                            v-tooltip.bottom="`Kontakt von ${fullName(slotProps.data.person)} im Personen-Modul öffnen`"
+                            v-tooltip.bottom="`Kontakt von ${fullName(slotProps.data.asGroupMember)} im Personen-Modul öffnen`"
                             icon="pi pi-user" 
                             class="p-button-text" 
                             as="a" 
                             target="_blank" 
-                            :href="getPersonUrl(slotProps.data.person.person.domainIdentifier)" 
+                            :href="getPersonUrl(slotProps.data.asGroupMember.person.domainIdentifier)" 
                         />
                     </template>
                 </Column>
                 <Column>
                     <template #body="slotProps">
                         <Button 
-                            v-tooltip.bottom="` ${fullName(slotProps.data.person)} bearbeiten`"
+                            v-tooltip.bottom="` ${fullName(slotProps.data.asGroupMember)} bearbeiten`"
                             icon="pi pi-pencil" 
                             class="p-button-text"
                             @click="openPersonDialog(slotProps.data)"
@@ -224,7 +224,7 @@
      } from '../types/flow';
     import { 
         FLOW_CONFIG, 
-        FLOW_GROUP_IDS, 
+        COMMITMENT_GROUP_IDS, 
         EQUIP_STEP_CONFIG,
         FLOW_INITIALS, 
     } from '../types/flow';
@@ -313,7 +313,7 @@
     const connectGroupSetInstance = new ConnectGroupSet();
     const totalRecords = ref(0);
     const loading = ref(false);
-    const allMasterFlowSteps = inject<Array<Group>>('allMasterFlowSteps', []);
+    const allCommitmentSteps = inject<Array<Group>>('allCommitmentSteps', []);
     const allEquipGroups = inject<Array<Group>>('allEquipGroups', []);
     const whoami = inject<Person>('whoami');
 
@@ -353,14 +353,14 @@
     };
 
     const props = defineProps<{
-        flowId: number | null
+        commitmentId: number | null
     }>();
 
     /**
-     * Enthält den aktiven Tabellenfilter; initial mit übergebenem Flow oder Standard-Flow.
+     * Enthält den aktiven Tabellenfilter; initial mit übergebenem Commitment oder Standard-Commitment.
      */
     const filters = ref({
-        flow: { value: props.flowId ?? FLOW_GROUP_IDS[0], matchMode: FilterMatchMode.EQUALS },
+        commitment: { value: props.commitmentId ?? COMMITMENT_GROUP_IDS[0], matchMode: FilterMatchMode.EQUALS },
     });
 
     const filterText = ref<string | null>(null);
@@ -386,7 +386,7 @@
         return allEquipGroups.filter(group => equipIds.includes(group.id));
     });
 
-    const selectedFlowId = computed(() => filters.value.flow.value as number | null);
+    const selectedCommitmentId = computed(() => filters.value.commitment.value as number | null);
     const lastFetchEvent = ref<DataTablePageEvent>({ page: 0, rows: MAX_ROWS });
 
     const currentUserId = computed(() => Number(whoami?.id));
@@ -413,7 +413,7 @@
         if (!payload.groups[0].group.domainAttributes.groupTypeId) return;
 
         filterText.value = payload.person.displayName;
-        filters.value.flow.value = Number(payload.groups[payload.groups.length - 1]?.group.domainIdentifier); 
+        filters.value.commitment.value = Number(payload.groups[payload.groups.length - 1]?.group.domainIdentifier); 
         fetchData({ page: 0, rows: MAX_ROWS });
         personPickerVisible.value = false;
     };
@@ -427,7 +427,7 @@
         await fetchData(lastFetchEvent.value);
 
         const refreshedRow = tableDataSet.value.find(
-            row => Number(row.person.person.domainIdentifier) === personId
+            row => Number(row.asGroupMember.person.domainIdentifier) === personId
         );
 
         if (refreshedRow) {
@@ -450,7 +450,7 @@
 
             const sortField = orderFields[serverSortField.value] ?? 'person_lastName';
             const sortDir = orderDirections[String(serverSortOrder.value) as '1' | '-1'];
-            const flowGroupId = selectedFlowId.value ?? FLOW_GROUP_IDS[0];
+            const commitmentGroupId = selectedCommitmentId.value ?? COMMITMENT_GROUP_IDS[0];
             const params: Params = {
                 page: event.page + 1, 
                 limit: event.rows, 
@@ -464,27 +464,29 @@
                 params.person_campusId = stationId;
             }
             const response = await churchtoolsClient.get<PageResponse<Array<GroupMember>>>(
-                `/groups/${flowGroupId}/members`, 
+                `/groups/${commitmentGroupId}/members`, 
                 params,
                 true);
-            const flowGroupMember = response.data.data;
+            const commitmentGroupMemberPage = response.data.data;
             totalRecords.value = (response.data.meta as MetaPagination).pagination?.total || 0;
 
             const rows: TableDataSet[] = await Promise.all(
-                flowGroupMember.map(async (groupMember) => {
+                commitmentGroupMemberPage.map(async (groupMember) => {
                     const personsGroups = await churchtoolsClient.get<Array<GroupMember>>(
                         `/persons/${groupMember.person.domainIdentifier}/groups`, {
                         show_to_delete_memberships: true,               //  default: false
                         show_requested_or_waiting_memberships: true     //  default: false    
                     });
+                    const personDetails = await churchtoolsClient.get<Person>(
+                        `/persons/${groupMember.person.domainIdentifier}`);
                     const subFlowGroups = personsGroups.filter(g => {
                         const isFlowType = g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_FLOW;
-                        const isNotMainFlow = !FLOW_GROUP_IDS.includes(Number(g.group.domainIdentifier) as any);
+                        const isNotMainFlow = !COMMITMENT_GROUP_IDS.includes(Number(g.group.domainIdentifier) as any);
                         return isFlowType && isNotMainFlow;
                     });
-                    const flowGroups = personsGroups.filter(g => {
+                    const commitmentGroups = personsGroups.filter(g => {
                         const isFlowType = g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_FLOW;
-                        const isMainFlow = FLOW_GROUP_IDS.includes(Number(g.group.domainIdentifier) as any);
+                        const isMainFlow = COMMITMENT_GROUP_IDS.includes(Number(g.group.domainIdentifier) as any);
                         return isFlowType && isMainFlow;
                     });
                     const equipGroups = personsGroups.filter(g => {
@@ -492,18 +494,19 @@
                         return isEquipType;
                     });
                     const connectGroups = personsGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.CONNECT_GROUPTYPE_ID);
-                    const flowGroupJoins = flowGroups.map(g => g.memberStartDate ? new Date(g.memberStartDate) : null);
+                    const commitmentGroupJoins = commitmentGroups.map(g => g.memberStartDate ? new Date(g.memberStartDate) : null);
                     const groups = personsGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_GROUP);
                     const teams = personsGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_TEAM);
                     const events = personsGroups.filter(g => g.group.domainAttributes.groupTypeId === FLOW_CONFIG.GROUP_TYPE_ID_EVENT);
                     return {
-                        person: groupMember,
-                        flow: flowGroups,
+                        asGroupMember: groupMember,
+                        asPerson: personDetails,
+                        commitment: commitmentGroups,
                         connect: connectGroups,
                         subFlows: subFlowGroups,
                         connectLeaders: connectGroupSetInstance.getLeaders(
                             connectGroups.map(g => Number(g.group.domainIdentifier))),
-                        latestJoinDate: flowGroupJoins.at(-1),
+                        latestJoinDate: commitmentGroupJoins.at(-1),
                         equip: equipGroups,
                         groups: groups,
                         teams: teams,

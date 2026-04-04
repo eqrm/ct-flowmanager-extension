@@ -11,8 +11,8 @@
         <template #header>
             <div class="flex align-items-center gap-3">
                 <Avatar 
-                    :image="props.data.person.person.imageUrl || undefined"
-                    :icon="props.data.person.person.imageUrl ? undefined : 'pi pi-user'"
+                    :image="props.data.asGroupMember.person.imageUrl || undefined"
+                    :icon="props.data.asGroupMember.person.imageUrl ? undefined : 'pi pi-user'"
                     class="mr-2" 
                     size="xlarge" 
                     shape="circle"
@@ -41,7 +41,7 @@
                 :targetPersonsGroupMemberships="data.connect"
                 :currentGroupLeaders="data.connectLeaders"
                 :candidateGroupLeaders="allConnectGroupLeaders"
-                :target-person="data.person"
+                :target-person="data.asGroupMember"
                 :role-id="FLOW_CONFIG.CONNECT_MEMBERS_ROLE_ID"
                 currentGroupLeadersTitle="Aktuelle Connectoren"
                 addGroupLeaderTitle="Connector hinzufügen"
@@ -54,15 +54,15 @@
         <!-- Flow Section -->
         <div v-show="activeSection === 'tags'">
             <GroupEditor
-                :current-members="data.flow"
-                :candidate-members="allMasterFlowSteps"
-                :target-person="data.person"
+                :current-members="data.commitment"
+                :candidate-members="allCommitmentSteps"
+                :target-person="data.asGroupMember"
                 :role-id="FLOW_CONFIG.FLOW_MEMBERS_ROLE_ID"
                 current-members-title="Aktuelle Tags"
                 add-member-title="Tag hinzufügen"
                 select-placeholder="Tag auswählen..."
-                @member-added="onMasterFlowAdded"
-                @member-removed="onMasterFlowRemoved"
+                @member-added="onCommitmentAdded"
+                @member-removed="onCommitmentRemoved"
             />
         </div>
         
@@ -103,7 +103,7 @@
                 legend="Nächster Schritt"
                 :members="props.data.subFlows"
                 :sub-flow-parent="teamsSubFlowParent"
-                :flow-url="getAppLinkForFlow('teamconnect')"
+                :flow-url="getAppLinkForFlow(EQRM_APP_FLOWS.TEAMCONNECT)"
                 tooltip-text="Teams Flow in neuem Tab öffnen"
             />
             <Fieldset legend="Team-Zugehörigkeit">
@@ -166,7 +166,7 @@
                 legend="Nächster Schritt"
                 :members="props.data.subFlows"
                 :sub-flow-parent="groupsSubFlowParent"
-                :flow-url="getAppLinkForFlow('egroups')"
+                :flow-url="getAppLinkForFlow(EQRM_APP_FLOWS.EGROUPS)"
                 tooltip-text="Gruppen Flow in neuem Tab öffnen"
             />
             <Fieldset legend="Group-Zugehörigkeit">
@@ -244,7 +244,7 @@
                 legend="Offboarding"
                 :members="props.data.subFlows"
                 :sub-flow-parent="offboardingSubFlowParent"
-                :flow-url="getAppLinkForFlow('offboarding')"
+                :flow-url="getAppLinkForFlow(EQRM_APP_FLOWS.OFFBOARDING)"
                 tooltip-text="Offboarding Flow in neuem Tab öffnen"
             />
         </div>
@@ -284,6 +284,7 @@ import FlowController from './FlowController.vue';
 
 // Types and Utils
 import {  
+    EQRM_APP_FLOWS,
     FLOW_CONFIG,
     EQUIP_STEP_CONFIG,
     TAUFE_STEP_CONFIG,
@@ -329,7 +330,7 @@ const emit = defineEmits<{
 // DEPENDENCY INJECTION
 // =============================================================================
 
-const allMasterFlowSteps = inject<Array<Group>>('allMasterFlowSteps', []);
+const allCommitmentSteps = inject<Array<Group>>('allCommitmentSteps', []);
 const allConnectGroupLeaders = inject<Array<GroupMember>>('allConnectGroupLeaders', []);
 const allSubFlows = inject<Array<SubFlowStep>>('allSubFlows', []);
 const masterData = inject<PersonMasterData | null>('masterData', null);
@@ -349,10 +350,6 @@ type FlowAction = {
     icon: string;
 };
 
-// --- Taufe: nachgeladene Personendaten ---
-const taufePerson = ref<Person | null>(null);
-const taufeLoading = ref(false);
-
 // =============================================================================
 // COMPUTED PROPERTIES
 // =============================================================================
@@ -363,15 +360,15 @@ const visible = computed({
 });
 
 const personFullName = computed(() => 
-    fullName(props.data?.person || {} as GroupMember)
+    fullName(props.data?.asGroupMember || {} as GroupMember)
 );
 
 const personId = computed(() => 
-    Number(props.data?.person?.person?.domainIdentifier) || 0
+    Number(props.data?.asGroupMember?.person?.domainIdentifier) || 0
 );
 
 const ctPersonLink = computed(() =>
-    props.data?.person?.person?.frontendUrl || '#'
+    props.data?.asGroupMember?.person?.frontendUrl || '#'
 );
 
 const teamsSubFlowParent = computed(() => 
@@ -483,14 +480,14 @@ function onConnectLeaderRemoved(groupLeader: GroupMember, groupMember: GroupMemb
     );
 }
 
-function onMasterFlowAdded(member: GroupMember): void {
-    console.log('Master Flow hinzugefügt:', member);
-    props.data.flow.push(member);
+function onCommitmentAdded(member: GroupMember): void {
+    console.log('Commitment hinzugefügt:', member);
+    props.data.commitment.push(member);
 }
 
-function onMasterFlowRemoved(member: GroupMember): void {
-    console.log('Master Flow entfernt:', member);
-    props.data.flow = props.data.flow.filter(
+function onCommitmentRemoved(member: GroupMember): void {
+    console.log('Commitment entfernt:', member);
+    props.data.commitment = props.data.commitment.filter(
         f => f.group.domainIdentifier !== member.group.domainIdentifier
     );
 }
@@ -615,32 +612,11 @@ function getGroupStatusConfig(statusId: number | null | undefined): {
 
 
 /**
- * Lädt Personendaten, wenn die Taufe-Sektion aktiviert wird.
- * Nutzt fetch gegen /persons/{id} — Endpunkt ggf. anpassen.
- */
-async function loadTaufePerson(): Promise<void> {
-    const id = personId.value;
-    if (!id) {
-        taufePerson.value = null;
-        return;
-    }
-    taufeLoading.value = true;
-    try {
-        taufePerson.value = await churchtoolsClient.get<Person>(`/persons/${id}`);
-    } catch (err: unknown) {
-        console.error('Fehler beim Laden der Taufe-Daten:', err);
-        taufePerson.value = null;
-    } finally {
-        taufeLoading.value = false;
-    }
-}
-
-/**
  * Öffnet den Equip Flow in einem neuen Tab.
  * Verwendet die getAppLinkForFlow Utility, um die URL zu generieren.
  */
 function appOpenEquipFlow(): void {
-    const url = getAppLinkForFlow('equip');
+    const url = getAppLinkForFlow(EQRM_APP_FLOWS.EQUIP);
     window.open(url, '_blank');
 }
 
@@ -648,7 +624,7 @@ function appOpenEquipFlow(): void {
  * Öffnet den Taufe Flow in einem neuen Tab.
  */
 function appOpenTaufeFlow(): void {
-    const url = getAppLinkForFlow('taufe');
+    const url = getAppLinkForFlow(EQRM_APP_FLOWS.TAUFE);
     window.open(url, '_blank');
 }
 
@@ -778,8 +754,7 @@ async function ensureFlowClientToken(): Promise<void> {
  * - `equip`: Befüllt den Equip-Flow-Status aus den Personendaten, lädt dann per
  *   {@link ensureFlowClientToken} + {@link flowApiClient.getFlowActions} die verfügbaren
  *   API-Aktionen und schreibt sie in `equipActions`.
- * - `taufe`: Befüllt den Taufe-Flow-Status und lädt die vollständigen Personendaten
- *   via {@link loadTaufePerson}.
+ * - `taufe`: Befüllt den Taufe-Flow-Status aus den bereits vorhandenen Daten.
  * - Alle anderen Sektionen: keine Nachlade-Logik (auskommentierte Freigabe-Option vorhanden).
  */
 watch(() => activeSection.value, (val) => {
@@ -794,11 +769,9 @@ watch(() => activeSection.value, (val) => {
 
     if (val === 'taufe') {
         populateTaufeFlowStatusFromData();
-        loadTaufePerson();
     } else {
         // optional: Daten freigeben, wenn Sektion verlassen wird
-        // taufePerson.value = null;
-        // taufeError.value = null;
+        // currently no section-specific cleanup required
     }
 });
 

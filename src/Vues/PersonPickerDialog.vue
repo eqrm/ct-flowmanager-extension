@@ -72,7 +72,7 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import type { DomainObjectPerson, GroupMember } from '../utils/ct-types';
-import { FLOW_GROUP_IDS, type FlowGroupId } from '../types/flow';
+import { COMMITMENT_GROUP_IDS, type FlowGroupId } from '../types/flow';
 
 // --------------------------- Props ---------------------------
 const props = defineProps<{
@@ -194,7 +194,7 @@ async function onAutoComplete(event: { query: string }) {
  * Wird sofort bei Auswahl einer Person im AutoComplete aufgerufen.
  * 
  * Lädt alle Gruppenmitgliedschaften der Person über die API und filtert sie auf Flow-Gruppen
- * (IDs aus FLOW_GROUP_IDS). Die gefilterten GroupMember werden in selectedPersonsGroupMemberships
+ * (IDs aus COMMITMENT_GROUP_IDS). Die gefilterten GroupMember werden in selectedPersonsGroupMemberships
  * gespeichert und bestimmen, ob der OK-Button aktiv ist.
  * 
  * @param event - AutoComplete item-select-Event mit ausgewähltem PersonDomainObject
@@ -204,7 +204,7 @@ async function onPersonSelected(event: { value: DomainObjectPerson & { displayNa
     if (!person?.domainIdentifier) return;
     const groupMembers = await getPersonsGroupsApi(person.domainIdentifier);
     const flowGroupMembers = groupMembers.filter(
-        gm => FLOW_GROUP_IDS.includes(Number(gm.group!.domainIdentifier) as FlowGroupId));
+        gm => COMMITMENT_GROUP_IDS.includes(Number(gm.group!.domainIdentifier) as FlowGroupId));
     selectedPersonsGroupMemberships.value = flowGroupMembers;
 }
 
