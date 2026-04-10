@@ -64,16 +64,58 @@ export const EQRM_APP_CONFIG = {
 // Flow Group IDs (!0New - !6Friend)
 export const COMMITMENT_GROUP_IDS = [671, 674, 677, 680, 683, 686, 1046] as const;
 
+export type FlowLevelLabel = '!0' | '!1' | '!2' | '!3' | '!4' | '!5' | '!6';
+
+export type FlowLevelDefinition = {
+    label: FlowLevelLabel;
+    commitmentGroupId: typeof COMMITMENT_GROUP_IDS[number];
+    // Index in der GrowPath-Sortierung; null = kein Status-Tag-Mapping vorhanden
+    statusTagIndex: number | null;
+};
+
+export const FLOW_LEVELS: readonly FlowLevelDefinition[] = [
+    { label: '!0', commitmentGroupId: 671, statusTagIndex: 0 },
+    { label: '!1', commitmentGroupId: 674, statusTagIndex: 1 },
+    { label: '!2', commitmentGroupId: 677, statusTagIndex: 2 },
+    { label: '!3', commitmentGroupId: 680, statusTagIndex: 3 },
+    { label: '!4', commitmentGroupId: 683, statusTagIndex: 4 },
+    { label: '!5', commitmentGroupId: 686, statusTagIndex: 5 },
+    { label: '!6', commitmentGroupId: 1046, statusTagIndex: null },
+] as const;
+
 // Flow ID to Level mapping
-export const FLOW_INITIALS: Record<number, '!0' | '!1' | '!2' | '!3' | '!4' | '!5' | '!6'> = {
-    671: '!0',
-    674: '!1',
-    677: '!2',
-    680: '!3',
-    683: '!4',
-    686: '!5',
-    1046: '!6'
-} as const;
+export const FLOW_INITIALS: Record<number, FlowLevelLabel> = Object.fromEntries(
+    FLOW_LEVELS.map(level => [level.commitmentGroupId, level.label])
+) as Record<number, FlowLevelLabel>;
+
+
+export const STATUS_TAG_LABELS: Record<number, FlowLevelLabel> = Object.fromEntries(
+    FLOW_LEVELS
+        .filter((level): level is FlowLevelDefinition & { statusTagIndex: number } => level.statusTagIndex !== null)
+        .map(level => [level.statusTagIndex, level.label])
+) as Record<number, FlowLevelLabel>;
+
+export const getFlowLabelByCommitmentGroupId = (commitmentGroupId: number): FlowLevelLabel | undefined => {
+    return FLOW_LEVELS.find(level => level.commitmentGroupId === commitmentGroupId)?.label;
+};
+
+export const getFlowLabelByStatusTagIndex = (statusTagIndex: number): FlowLevelLabel | undefined => {
+    return FLOW_LEVELS.find(level => level.statusTagIndex === statusTagIndex)?.label;
+};
+
+export const hasFlowLevelMismatch = (input: {
+    commitmentGroupId: number;
+    statusTagIndex: number;
+}): boolean => {
+    const commitmentLabel = getFlowLabelByCommitmentGroupId(input.commitmentGroupId);
+    const statusTagLabel = getFlowLabelByStatusTagIndex(input.statusTagIndex);
+
+    if (!commitmentLabel || !statusTagLabel) {
+        return false;
+    }
+
+    return commitmentLabel !== statusTagLabel;
+};
 
 export type FlowStepDefinition = {
     /** Laufende interne Schritt-ID innerhalb der Konfiguration. */

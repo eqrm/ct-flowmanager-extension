@@ -1,5 +1,5 @@
 import { churchtoolsClient } from '@churchtools/churchtools-client';
-import type { PersonMasterData, Group, GroupMember, Person, GroupHierarchy } from './utils/ct-types';
+import type { PersonMasterData, Group, GroupMember, Person, GroupHierarchy, GrowPath } from './utils/ct-types';
 import { COMMITMENT_GROUP_IDS, EQUIP_STEP_CONFIG, FLOW_CONFIG, type SubFlowStep } from './types/flow';
 import { createApp, ref } from 'vue';
 import App from './Vues/App.vue';
@@ -129,6 +129,13 @@ try {
     ).then(arrays => arrays.flat());
 
     //  --------------------------------------------------------------------------
+    //  GrowPaths laden (für Status-Tag)
+    //  --------------------------------------------------------------------------
+    console.log('Loading grow paths...');
+    const growPaths = ref<Array<GrowPath>>([]);
+    growPaths.value = await churchtoolsClient.get<Array<GrowPath>>('/person/growpaths');
+
+    //  --------------------------------------------------------------------------
     //  Vue App initialisieren
     //  --------------------------------------------------------------------------
     console.log('Initializing Vue app...');
@@ -144,6 +151,7 @@ try {
     app.provide('allSubFlows', allSubFlows.value);
     app.provide('allEquipGroups', allEquipGroups.value);
     app.provide('allConnectGroupLeaders', allConnectGroupLeaders.value);
+    app.provide('growPaths', growPaths);
     app.provide('whoami', whoami.value);
     app.directive('tooltip', Tooltip);
     app.mount('#app');

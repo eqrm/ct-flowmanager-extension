@@ -6,11 +6,13 @@
                 :severity="item.severity">
                 <Avatar 
                     :label="item.label"
+                    :style="getAvatarStyle(item.id)"
                     v-tooltip.bottom="item.tooltip"/>
             </OverlayBadge>
             <Avatar 
                 v-else 
                 :label="item.label"
+                :style="getAvatarStyle(item.id)"
                 v-tooltip.bottom="item.tooltip"/>
         </div> 
     </div>
@@ -30,6 +32,7 @@ const props = defineProps<{
     masterData: Array<Group> | undefined;
     levelMapping: Record<number, string>;
     dataProperty: keyof TableDataSet;
+    highlightedIds?: Array<number>;
 }>();
 
 // Computed Avatar Data
@@ -41,4 +44,14 @@ const avatarData = computed(() => {
         props.dataProperty
     );
 });
+
+const getAvatarStyle = (id: number): Record<string, string> => {
+    const isHighlighted = props.highlightedIds?.includes(id) ?? false;
+    if (!isHighlighted) return {};
+
+    return {
+        backgroundColor: '#22c55e',
+        color: '#ffffff',
+    };
+};
 </script>

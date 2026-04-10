@@ -69,7 +69,8 @@
                 dataKey="data.asGroupMember.person.domainAttribute.id" 
                 responsiveLayout="scroll" 
                 rowExpansionTemplate="slotProps" 
-                columnResizeMode="fit">
+                columnResizeMode="fit"
+                :rowClass="(data) => isStatusTagDifferentFromCommitment(data) ? 'row-status-mismatch' : ''">
                 
                 <!-- Name -->
                 <Column 
@@ -89,19 +90,17 @@
                     </template>
                 </Column>
                 
-                <!-- Flow -->
+                <!-- Status-Tag -->
                 <Column 
-                    header="Tag"
+                    header="Status-Tag"
                     field="commitment" 
-                    :showFilterMenu="true" 
-                    :showFilterMatchModes="false">
+                    :showFilterMenu="false">
                     <template #body="slotProps">
-                        <AvatarDataColumn
-                            :data="slotProps.data"
-                            :master-data="allCommitmentSteps"
-                            :level-mapping="FLOW_INITIALS"
-                            data-property="commitment"
-                        />
+                        <Avatar 
+                            v-if="getStatusTagLabel(slotProps.data.asPerson)"
+                            :label="getStatusTagLabel(slotProps.data.asPerson)"
+                            v-tooltip.bottom="getStatusTagFullName(slotProps.data.asPerson)"
+                            class="mr-2"/>
                     </template>
                 </Column> 
                 
@@ -205,6 +204,12 @@
     />
 </template>
 
+<style scoped>
+:deep(.row-status-mismatch) {
+    background-color: rgba(220, 38, 38, 0.08) !important;
+}
+</style>
+
 <script lang="ts" setup>
     import type { 
         Group, 
@@ -213,7 +218,8 @@
         Person,
         GroupMember, 
         MetaPagination, 
-        MemberStatus } from '../utils/ct-types';
+        MemberStatus,
+        GrowPath } from '../utils/ct-types';
     import type { 
         PageResponse, 
         Params } from '@churchtools/churchtools-client/dist/churchtoolsClient';
@@ -226,7 +232,8 @@
         FLOW_CONFIG, 
         COMMITMENT_GROUP_IDS, 
         EQUIP_STEP_CONFIG,
-        FLOW_INITIALS, 
+        STATUS_TAG_LABELS,
+        hasFlowLevelMismatch,
     } from '../types/flow';
     import { 
         FilterMatchMode } from '@primevue/core/api';
@@ -235,7 +242,8 @@
         watch, 
         onMounted, 
         computed, 
-        inject } from 'vue';
+        inject,
+        type Ref } from 'vue';
     import DataTable from 'primevue/datatable';
     import Column from 'primevue/column';
     import Button from 'primevue/button';
@@ -316,6 +324,7 @@
     const allCommitmentSteps = inject<Array<Group>>('allCommitmentSteps', []);
     const allEquipGroups = inject<Array<Group>>('allEquipGroups', []);
     const whoami = inject<Person>('whoami');
+    const growPaths = inject<Ref<Array<GrowPath>>>('growPaths', ref([]));
 
     const personDialogVisible = ref(false);
     const personPickerVisible = ref(false);
@@ -631,6 +640,46 @@
             console.error('Error fetching person settings:', error);
             return null;
         }
+    };
+
+    const resolveGrowPath = (person: Person): GrowPath | null => {
+        const growPathId = person?.growPathId;
+        if (!growPathId) return null;
+        return growPaths.value.find(path => path.id === growPathId) ?? null;
+    };
+
+    const getStatusTagLabel = (person: Person): string => {
+        const growPath = resolveGrowPath(person);
+        if (!growPath) return '';
+
+        const sortedGrowPaths = [...growPaths.value].sort((a, b) => a.sortKey - b.sortKey);
+        const activeIndex = sortedGrowPaths.findIndex(path => path.id === growPath.id);
+        if (activeIndex < 0) return '';
+
+        return STATUS_TAG_LABELS[activeIndex as keyof typeof STATUS_TAG_LABELS] ?? '';
+    };
+
+    const getStatusTagFullName = (person: Person): string => {
+        const growPath = resolveGrowPath(person);
+        if (!growPath) return '';
+        return (growPath.nameTranslated || growPath.name || '').trim();
+    };
+
+    const isStatusTagDifferentFromCommitment = (data: TableDataSet): boolean => {
+        const selectedCommitment = selectedCommitmentId.value;
+        if (!selectedCommitment) return false;
+
+        const growPath = resolveGrowPath(data.asPerson);
+        if (!growPath) return false;
+
+        const sortedGrowPaths = [...growPaths.value].sort((a, b) => a.sortKey - b.sortKey);
+        const statusTagIndex = sortedGrowPaths.findIndex(path => path.id === growPath.id);
+        if (statusTagIndex < 0) return false;
+
+        return hasFlowLevelMismatch({
+            commitmentGroupId: Number(selectedCommitment),
+            statusTagIndex,
+        });
     };
 
 </script>

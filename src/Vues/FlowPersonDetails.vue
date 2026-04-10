@@ -52,15 +52,15 @@
         </div>
 
         <!-- Flow Section -->
-        <div v-show="activeSection === 'tags'">
+        <div v-show="activeSection === 'commitment'">
             <GroupEditor
                 :current-members="data.commitment"
                 :candidate-members="allCommitmentSteps"
                 :target-person="data.asGroupMember"
                 :role-id="FLOW_CONFIG.FLOW_MEMBERS_ROLE_ID"
-                current-members-title="Aktuelle Tags"
-                add-member-title="Tag hinzufügen"
-                select-placeholder="Tag auswählen..."
+                current-members-title="Aktuelle Commitments"
+                add-member-title="Commitment hinzufügen"
+                select-placeholder="Commitment auswählen..."
                 @member-added="onCommitmentAdded"
                 @member-removed="onCommitmentRemoved"
             />
@@ -405,10 +405,10 @@ const menuItems = ref<MenuItem[]>([
         command: () => { activeSection.value = 'connect'; }
     },
     {
-        label: 'Tags',
+        label: 'Commitment',
         icon: 'pi pi-tags',
         command: () => { 
-            activeSection.value = 'tags';
+            activeSection.value = 'commitment';
         }
     },
     {

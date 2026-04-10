@@ -26,34 +26,7 @@
 <script setup lang="ts">
     import '../types/flow.ts';
     import 'primeflex/primeflex.css'
-    import Tabs from 'primevue/tabs';
-    import TabList from 'primevue/tablist';
-    import Tab from 'primevue/tab';
-    import TabPanels from 'primevue/tabpanels';
-    import TabPanel from 'primevue/tabpanel';
-    import FlowController from './FlowController.vue';
     import FlowTable from './FlowTable.vue'; 
-    import EquipDataView from './EquipDataView.vue';
     import { COMMITMENT_GROUP_IDS } from '../types/flow.ts';
 
-    type FlowAction = {
-        action: () => void;
-        label: string;
-        icon: string;
-    };
-
-    const loadFlowControlActions = (): FlowAction[] => {
-        return [
-            {
-                action: () => console.log('FlowControl: Aktion 1 ausgeführt'),
-                label: 'Aktion 1',
-                icon: 'pi pi-play',
-            },
-            {
-                action: () => console.log('FlowControl: Aktion 2 ausgeführt'),
-                label: 'Aktion 2',
-                icon: 'pi pi-play',
-            },
-        ];
-    };
 </script>
