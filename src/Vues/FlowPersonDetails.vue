@@ -53,6 +53,15 @@
 
         <!-- Flow Section -->
         <div v-show="activeSection === 'commitment'">
+            <Fieldset
+                legend="Aktueller Status-Tag"
+                class="w-full mb-3"
+                :class="{ 'status-tag-mismatch': isStatusTagDifferentFromCommitment }"
+            >
+                <div class="w-full text-center text-xl">
+                    {{ currentStatusTagName || 'Kein Status-Tag gesetzt' }}
+                </div>
+            </Fieldset>
             <GroupEditor
                 :current-members="data.commitment"
                 :candidate-members="allCommitmentSteps"
@@ -288,6 +297,7 @@ import {
     FLOW_CONFIG,
     EQUIP_STEP_CONFIG,
     TAUFE_STEP_CONFIG,
+    hasFlowLevelMismatch,
     getAppLinkForFlow, 
     type EquipFlowStep,
     type FlowStepConfig,
@@ -317,6 +327,7 @@ import {
 
 const props = defineProps<{
     data: TableDataSet;
+    selectedCommitmentId?: number | null;
     //connectLeaders: Array<GroupMember>;
     visible: boolean;
 }>();
@@ -357,6 +368,35 @@ type FlowAction = {
 const visible = computed({
     get: () => props.visible,
     set: (v: boolean) => emit('update:visible', v),
+});
+
+const currentStatusTagName = computed(() => {
+    const person = props.data.asPerson;
+    if (!person?.growPathId || !masterData?.growPaths) return '';
+
+    const growPath = masterData.growPaths.find((path: { id: number; name?: string; nameTranslated?: string }) => path.id === person.growPathId);
+    if (!growPath) return '';
+
+    return (growPath.nameTranslated || growPath.name || '').trim();
+});
+
+const currentStatusTagIndex = computed(() => {
+    const person = props.data.asPerson;
+    if (!person?.growPathId || !masterData?.growPaths) return -1;
+
+    const sortedGrowPaths = [...masterData.growPaths].sort((a, b) => a.sortKey - b.sortKey);
+    return sortedGrowPaths.findIndex(path => path.id === person.growPathId);
+});
+
+const isStatusTagDifferentFromCommitment = computed(() => {
+    const selectedCommitmentId = props.selectedCommitmentId;
+    if (!selectedCommitmentId) return false;
+    if (currentStatusTagIndex.value < 0) return false;
+
+    return hasFlowLevelMismatch({
+        commitmentGroupId: Number(selectedCommitmentId),
+        statusTagIndex: currentStatusTagIndex.value,
+    });
 });
 
 const personFullName = computed(() => 
@@ -788,3 +828,9 @@ watch(
 
 
 </script>
+
+<style scoped>
+:deep(.p-fieldset.status-tag-mismatch .p-fieldset-content) {
+    background-color: rgba(220, 38, 38, 0.08) !important;
+}
+</style>

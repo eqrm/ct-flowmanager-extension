@@ -108,7 +108,7 @@ import DataTable from 'primevue/datatable';
 import Fieldset from 'primevue/fieldset';
 import Select from 'primevue/select';
 
-// Types — Person entfernt, nur GroupMember bleibt
+// Types
 import type { GroupMember, MembershipNew, Group } from '../utils/ct-types';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { FLOW_CONFIG } from '../types/flow';

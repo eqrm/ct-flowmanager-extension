@@ -195,6 +195,7 @@
         v-if="personDialogVisible && selectedRow"
         v-model:visible="personDialogVisible"
         :data="selectedRow"
+        :selected-commitment-id="selectedCommitmentId"
         :connectLeaders="connectGroupSetInstance.allConnectGroupLeaders"
         @equip-action-triggered="onEquipActionTriggered"
     />
